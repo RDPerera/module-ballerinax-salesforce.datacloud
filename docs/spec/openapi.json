@@ -1,0 +1,2047 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Salesforce Data Cloud (Data 360) API",
+    "description": "Write records to Salesforce Data Cloud (Data 360), read unified profiles and calculated insights back, and trigger the identity resolution and insight runs that build them.\n\nThe `Runs` operations (Connect REST API) are served by the core Salesforce org at `https://{myDomain}/services/data/{apiVersion}` with the org's OAuth 2.0 access token. Every other operation is served by the Data Cloud tenant endpoint with a Data Cloud token, obtained by exchanging the org's access token at `POST https://{myDomain}/services/a360/token`; the exchange also returns the tenant endpoint.",
+    "contact": {
+      "name": "Salesforce Data Cloud",
+      "url": "https://developer.salesforce.com/docs/data/data-cloud-ref/guide"
+    },
+    "version": "1.0.0",
+    "x-ballerina-display": {
+      "label": "Salesforce Data Cloud"
+    }
+  },
+  "externalDocs": {
+    "url": "https://developer.salesforce.com/docs/data/data-cloud-ref/guide"
+  },
+  "servers": [
+    {
+      "url": "https://{tenantEndpoint}",
+      "description": "Data Cloud tenant endpoint (the `instance_url` from the a360 token exchange).",
+      "variables": {
+        "tenantEndpoint": {
+          "default": "tenant.c360a.salesforce.com"
+        }
+      }
+    }
+  ],
+  "security": [
+    {
+      "OAuth2": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Streaming Ingestion",
+      "description": "Near-real-time JSON ingestion into an Ingestion API data stream."
+    },
+    {
+      "name": "Bulk Ingestion",
+      "description": "CSV bulk jobs into an Ingestion API data stream."
+    },
+    {
+      "name": "Profile",
+      "description": "Look up unified profiles and related data model objects."
+    },
+    {
+      "name": "Calculated Insights",
+      "description": "Query calculated insight objects."
+    },
+    {
+      "name": "Runs",
+      "description": "Trigger identity resolution and calculated-insight runs (Connect REST API, core org host).\nhttps://developer.salesforce.com/docs/data/connectapi/references/spec\n"
+    }
+  ],
+  "paths": {
+    "/api/v1/ingest/sources/{sourceName}/{objectName}": {
+      "post": {
+        "tags": [
+          "Streaming Ingestion"
+        ],
+        "summary": "Upsert records via streaming ingestion",
+        "description": "Queues records for asynchronous upsert (processed about every 3 minutes). Max 200 KB per request.\n**Every field defined in the object's schema must be present in each record**, whether or not it\nis marked required; send a blank value when there's no data. An update replaces the whole record.\n",
+        "operationId": "upsertRecords",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestRecords"
+              },
+              "example": {
+                "data": [
+                  {
+                    "customer_id": "100000000",
+                    "email": "alex@example.com",
+                    "first_name": "Alex",
+                    "last_name": "Perera"
+                  }
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "$ref": "#/components/responses/Accepted"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "413": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Streaming Ingestion"
+        ],
+        "summary": "Delete records by primary key via streaming ingestion",
+        "description": "Deletes up to 200 records by primary key, passed in the request body. For more than 200, use a bulk job with `operation: delete`.\n",
+        "operationId": "deleteRecords",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteRecordsRequest"
+              },
+              "example": {
+                "ids": [
+                  "001xx000003DGb2AAG"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "$ref": "#/components/responses/Accepted"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/SourceName"
+        },
+        {
+          "$ref": "#/components/parameters/ObjectName"
+        }
+      ]
+    },
+    "/api/v1/ingest/sources/{sourceName}/{objectName}/actions/test": {
+      "post": {
+        "tags": [
+          "Streaming Ingestion"
+        ],
+        "summary": "Validate records against the object schema without ingesting them",
+        "description": "Validates records synchronously and doesn't write them to the data lake; intended for development\nonly. As with upserts, every schema field must be present in each record.\n",
+        "operationId": "validateRecords",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestRecords"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "All records are valid. Nothing is stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedResponse"
+                },
+                "example": {
+                  "accepted": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed. `details.validationReport` lists each failing record and why.\n",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "timestamp": "2021-08-20T16:34:26.047666Z",
+                  "error": "Bad Request",
+                  "message": "Bad Request: JSON is properly formatted but has a mismatch with Schema.",
+                  "path": "uri=/api/v1/ingest/sources/ecomm/Orders/actions/test",
+                  "tenantId": "{tenantId}",
+                  "internalErrorCode": "COMMON_ERROR_GENERIC",
+                  "details": {
+                    "validationReport": [
+                      {
+                        "record": "{\"id\":\"f19cae7e-5cdb-41ce-92ba-539afea04f9d\",\"total\":77506}",
+                        "causingExceptions": [
+                          "#/id: expected type: Number, found: String"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/SourceName"
+        },
+        {
+          "$ref": "#/components/parameters/ObjectName"
+        }
+      ]
+    },
+    "/api/v1/ingest/jobs": {
+      "get": {
+        "tags": [
+          "Bulk Ingestion"
+        ],
+        "summary": "List bulk ingestion jobs",
+        "operationId": "listBulkJobs",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of jobs to return. Defaults to 20, maximum 100",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer",
+              "default": 20
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Number of rows to skip before returning",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "orderBy",
+            "in": "query",
+            "description": "Field to order jobs by. Defaults to `systemModstamp`",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "states",
+            "in": "query",
+            "description": "Only return jobs in these states (comma-separated)",
+            "required": false,
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/BulkJobState"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Jobs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkJobList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Bulk Ingestion"
+        ],
+        "summary": "Create a bulk ingestion job",
+        "description": "Needs an Ingestion API data stream for the object. Limits: 20 jobs per hour, 5 concurrent jobs; jobs left `Open` or `UploadComplete` for more than 7 days are deleted. Returns `409 CONFLICT` while another job for the same object is still open or processing",
+        "operationId": "createBulkJob",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBulkJobRequest"
+              },
+              "example": {
+                "object": "customers",
+                "sourceName": "CustomerOrders",
+                "operation": "upsert"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Job created in the `Open` state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkJob"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/ingest/jobs/{jobId}": {
+      "get": {
+        "tags": [
+          "Bulk Ingestion"
+        ],
+        "summary": "Get a bulk ingestion job's status",
+        "operationId": "getBulkJob",
+        "responses": {
+          "200": {
+            "description": "Job info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkJob"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Bulk Ingestion"
+        ],
+        "summary": "Delete a bulk ingestion job",
+        "description": "Allowed in the `UploadComplete`, `JobComplete`, `Aborted` and `Failed` states. Deletes the job's\ndata and metadata; it no longer appears in `getJob` or `listJobs`.\n",
+        "operationId": "deleteBulkJob",
+        "responses": {
+          "204": {
+            "description": "Job deleted"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Bulk Ingestion"
+        ],
+        "summary": "Close (UploadComplete) or abort a bulk ingestion job",
+        "description": "`UploadComplete` queues the uploaded data for processing; `Aborted` discards it. After either,\nno more data can be added. `409` if the job's current state doesn't allow the change.\n",
+        "operationId": "updateBulkJobState",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBulkJobStateRequest"
+              },
+              "example": {
+                "state": "UploadComplete"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated job info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkJob"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/JobId"
+        }
+      ]
+    },
+    "/api/v1/ingest/jobs/{jobId}/batches": {
+      "put": {
+        "tags": [
+          "Bulk Ingestion"
+        ],
+        "summary": "Upload a CSV file to an open bulk ingestion job",
+        "description": "One CSV file per call, up to 100 files per job, each at most 150 MB (UTF-8, RFC 4180, comma\ndelimiter). Dates are `yyyy-MM-dd`; date-times `yyyy-MM-ddTHH:mm:ss.SSSZ`.\n- **Upsert jobs:** a header row matching the object's field names. Updates replace the whole\n  record (no patch semantics), and empty values become null.\n- **Delete jobs:** no header. Column 1 is the primary key. A second column (a date-time later\n  than the original record) is needed only when the data stream has a record-version field,\n  e.g. Profile category.\n",
+        "operationId": "uploadBulkJobData",
+        "requestBody": {
+          "content": {
+            "text/csv": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "customer_id,email,first_name,last_name\n100000000,alex@example.com,Alex,Perera\n"
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "File accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "413": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/JobId"
+        }
+      ]
+    },
+    "/api/v1/profile/metadata": {
+      "get": {
+        "tags": [
+          "Profile"
+        ],
+        "summary": "Get metadata for all profile data model objects",
+        "operationId": "listProfileMetadata",
+        "responses": {
+          "200": {
+            "description": "Metadata of profile-category DMOs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetadataResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/profile/metadata/{dataModelName}": {
+      "get": {
+        "tags": [
+          "Profile"
+        ],
+        "summary": "Get metadata (fields, indexes, relationships) for one profile data model object",
+        "operationId": "getProfileMetadata",
+        "responses": {
+          "200": {
+            "description": "Metadata of the DMO",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetadataResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/DataModelName"
+        }
+      ]
+    },
+    "/api/v1/profile/{dataModelName}": {
+      "get": {
+        "tags": [
+          "Profile"
+        ],
+        "summary": "Query profile records with filters",
+        "operationId": "queryProfiles",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Fields"
+          },
+          {
+            "$ref": "#/components/parameters/RequiredFilters"
+          },
+          {
+            "$ref": "#/components/parameters/ProfileLimit"
+          },
+          {
+            "$ref": "#/components/parameters/Offset"
+          },
+          {
+            "$ref": "#/components/parameters/OrderBy"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/QueryResult"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/DataModelName"
+        }
+      ]
+    },
+    "/api/v1/profile/{dataModelName}/{recordId}": {
+      "get": {
+        "tags": [
+          "Profile"
+        ],
+        "summary": "Get a profile record by ID (or by secondary key with `searchKey`)",
+        "description": "Returns an empty `data` list when no record matches.",
+        "operationId": "getProfile",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Fields"
+          },
+          {
+            "$ref": "#/components/parameters/Filters"
+          },
+          {
+            "$ref": "#/components/parameters/ProfileLimit"
+          },
+          {
+            "$ref": "#/components/parameters/Offset"
+          },
+          {
+            "$ref": "#/components/parameters/OrderBy"
+          },
+          {
+            "$ref": "#/components/parameters/SearchKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/QueryResult"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/DataModelName"
+        },
+        {
+          "$ref": "#/components/parameters/RecordId"
+        }
+      ]
+    },
+    "/api/v1/profile/{dataModelName}/{recordId}/{childDataModelName}": {
+      "get": {
+        "tags": [
+          "Profile"
+        ],
+        "summary": "Get a profile's related child records",
+        "description": "Each `data` item is the parent row, with the child record nested under a key named after the child object, e.g. `{\"ssot__FirstName__c\": \"Iris\", \"ssot__ContactPointEmail__dlm\": {\"ssot__EmailAddress__c\": \"…\"}}`",
+        "operationId": "getProfileChildRecords",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Fields"
+          },
+          {
+            "$ref": "#/components/parameters/Filters"
+          },
+          {
+            "$ref": "#/components/parameters/ProfileLimit"
+          },
+          {
+            "$ref": "#/components/parameters/Offset"
+          },
+          {
+            "$ref": "#/components/parameters/OrderBy"
+          },
+          {
+            "$ref": "#/components/parameters/SearchKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/QueryResult"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/DataModelName"
+        },
+        {
+          "$ref": "#/components/parameters/RecordId"
+        },
+        {
+          "name": "childDataModelName",
+          "in": "path",
+          "description": "API name of a related child DMO, e.g. `ContactPointEmail__dlm`",
+          "required": true,
+          "style": "simple",
+          "explode": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/api/v1/profile/{dataModelName}/{recordId}/calculated-insights/{insightName}": {
+      "get": {
+        "tags": [
+          "Profile",
+          "Calculated Insights"
+        ],
+        "summary": "Get a calculated insight's values for one profile",
+        "description": "Each `data` item is the parent row, with the insight's values nested under a key named after the insight, e.g. `{\"ssot__FirstName__c\": \"Iris\", \"IndividualSpend__cio\": {\"total_spend__c\": 1250.5}}`",
+        "operationId": "getProfileCalculatedInsight",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Dimensions"
+          },
+          {
+            "$ref": "#/components/parameters/Measures"
+          },
+          {
+            "$ref": "#/components/parameters/Filters"
+          },
+          {
+            "$ref": "#/components/parameters/ProfileLimit"
+          },
+          {
+            "$ref": "#/components/parameters/Offset"
+          },
+          {
+            "$ref": "#/components/parameters/OrderBy"
+          },
+          {
+            "$ref": "#/components/parameters/SearchKey"
+          },
+          {
+            "$ref": "#/components/parameters/TimeGranularity"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/QueryResult"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/DataModelName"
+        },
+        {
+          "$ref": "#/components/parameters/RecordId"
+        },
+        {
+          "$ref": "#/components/parameters/CiName"
+        }
+      ]
+    },
+    "/api/v1/insight/metadata": {
+      "get": {
+        "tags": [
+          "Calculated Insights"
+        ],
+        "summary": "Get metadata (dimensions and measures) for all calculated insights",
+        "operationId": "listCalculatedInsightMetadata",
+        "responses": {
+          "200": {
+            "description": "Calculated insight metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetadataResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/insight/metadata/{insightName}": {
+      "get": {
+        "tags": [
+          "Calculated Insights"
+        ],
+        "summary": "Get metadata (dimensions and measures) for one calculated insight",
+        "operationId": "getCalculatedInsightMetadata",
+        "responses": {
+          "200": {
+            "description": "Calculated insight metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetadataResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/CiName"
+        }
+      ]
+    },
+    "/api/v1/insight/calculated-insights/{insightName}": {
+      "get": {
+        "tags": [
+          "Calculated Insights"
+        ],
+        "summary": "Query a calculated insight",
+        "description": "Returns at most 4,999 rows per call; page with `limit`, `offset` and `orderby`.",
+        "operationId": "queryCalculatedInsight",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Dimensions"
+          },
+          {
+            "$ref": "#/components/parameters/Measures"
+          },
+          {
+            "$ref": "#/components/parameters/Filters"
+          },
+          {
+            "$ref": "#/components/parameters/InsightLimit"
+          },
+          {
+            "$ref": "#/components/parameters/Offset"
+          },
+          {
+            "$ref": "#/components/parameters/OrderBy"
+          },
+          {
+            "$ref": "#/components/parameters/TimeGranularity"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/QueryResult"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/CiName"
+        }
+      ]
+    },
+    "/ssot/identity-resolutions": {
+      "get": {
+        "tags": [
+          "Runs"
+        ],
+        "summary": "List identity resolution rulesets",
+        "operationId": "listIdentityResolutionRulesets",
+        "responses": {
+          "200": {
+            "description": "Identity resolution rulesets",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityResolutionRulesetList"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/SalesforceError"
+          },
+          "403": {
+            "$ref": "#/components/responses/SalesforceError"
+          }
+        }
+      },
+      "servers": [
+        {
+          "url": "https://{myDomain}/services/data/{apiVersion}",
+          "description": "Core Salesforce org (Connect REST API).",
+          "variables": {
+            "myDomain": {
+              "description": "My Domain host of the core org.",
+              "default": "example.my.salesforce.com"
+            },
+            "apiVersion": {
+              "description": "Salesforce API version, v57.0 or later.",
+              "default": "v62.0"
+            }
+          }
+        }
+      ]
+    },
+    "/ssot/identity-resolutions/{rulesetId}/actions/run-now": {
+      "post": {
+        "tags": [
+          "Runs"
+        ],
+        "summary": "Run an identity resolution ruleset now",
+        "description": "Starts the ruleset instead of waiting for its schedule. The result says whether it started;\ndocumented result codes include `IdentityResolutionJobIsAlreadyRunning`,\n`NoPendingChangesJobRunSkipped` and `ExceededMaximumNumberOfSuccessfulRunsAllowedIn24Hours`.\n",
+        "operationId": "runIdentityResolutionRuleset",
+        "parameters": [
+          {
+            "name": "rulesetId",
+            "in": "path",
+            "description": "Developer name or ID of the identity resolution ruleset",
+            "required": true,
+            "style": "simple",
+            "explode": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Run result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/SalesforceError"
+          },
+          "404": {
+            "$ref": "#/components/responses/SalesforceError"
+          }
+        }
+      },
+      "servers": [
+        {
+          "url": "https://{myDomain}/services/data/{apiVersion}",
+          "description": "Core Salesforce org (Connect REST API).",
+          "variables": {
+            "myDomain": {
+              "description": "My Domain host of the core org.",
+              "default": "example.my.salesforce.com"
+            },
+            "apiVersion": {
+              "description": "Salesforce API version, v57.0 or later.",
+              "default": "v62.0"
+            }
+          }
+        }
+      ]
+    },
+    "/ssot/calculated-insights/{insightName}/actions/run": {
+      "post": {
+        "tags": [
+          "Runs"
+        ],
+        "summary": "Run a calculated insight now",
+        "operationId": "runCalculatedInsight",
+        "parameters": [
+          {
+            "name": "insightName",
+            "in": "path",
+            "description": "API name of the calculated insight, e.g. `IndividualSpend__cio`",
+            "required": true,
+            "style": "simple",
+            "explode": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Run started",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResult"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A run is already in progress (`ALREADY_IN_PROCESS`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesforceErrors"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/SalesforceError"
+          },
+          "404": {
+            "$ref": "#/components/responses/SalesforceError"
+          }
+        }
+      },
+      "servers": [
+        {
+          "url": "https://{myDomain}/services/data/{apiVersion}",
+          "description": "Core Salesforce org (Connect REST API).",
+          "variables": {
+            "myDomain": {
+              "description": "My Domain host of the core org.",
+              "default": "example.my.salesforce.com"
+            },
+            "apiVersion": {
+              "description": "Salesforce API version, v57.0 or later.",
+              "default": "v62.0"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "components": {
+    "schemas": {
+      "FieldMetadata": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "API name of the field"
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Display label of the field"
+          },
+          "type": {
+            "type": "string",
+            "example": "STRING",
+            "description": "Data type of the field, e.g. `STRING`, `NUMBER`, `DATE_TIME`",
+            "x-ballerina-name": "dataType"
+          },
+          "rollupable": {
+            "type": "boolean",
+            "description": "Calculated insight measures only."
+          }
+        },
+        "additionalProperties": true,
+        "description": "A field, dimension or measure of a data model object or calculated insight"
+      },
+      "IdentityResolutionRuleset": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "1irXX0000000000AAA",
+            "description": "ID of the ruleset"
+          },
+          "label": {
+            "type": "string",
+            "description": "Label of the ruleset"
+          },
+          "developerName": {
+            "type": "string",
+            "nullable": true,
+            "description": "Developer name of the ruleset. Can be `null`"
+          },
+          "configurationType": {
+            "type": "string",
+            "example": "individual",
+            "description": "Type of entity the ruleset unifies, e.g. `individual`"
+          },
+          "objectApiName": {
+            "type": "string",
+            "example": "Individual",
+            "description": "API name of the object the ruleset unifies, e.g. `Individual`"
+          },
+          "dataSpaceName": {
+            "type": "string",
+            "example": "default",
+            "description": "Data space of the ruleset, e.g. `default`"
+          },
+          "doesRunAutomatically": {
+            "type": "boolean",
+            "description": "Whether the ruleset runs on its schedule"
+          },
+          "lastJobStatus": {
+            "type": "string",
+            "example": "IN_PROGRESS",
+            "description": "Status of the latest run, e.g. `SUCCESS` or `IN_PROGRESS`"
+          },
+          "lastJobCompleted": {
+            "type": "string",
+            "nullable": true,
+            "description": "Completion time of the latest run. `null` if it never completed"
+          },
+          "matchRules": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "description": "Rules that decide which source records belong to the same profile"
+          },
+          "reconciliationRules": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "description": "Rules that decide which value a unified profile keeps for each field"
+          }
+        },
+        "additionalProperties": true,
+        "description": "An identity resolution ruleset. `developerName` can be `null`; use `id` to run it"
+      },
+      "AcceptedResponse": {
+        "type": "object",
+        "properties": {
+          "accepted": {
+            "type": "boolean",
+            "description": "Whether the request was accepted"
+          }
+        },
+        "description": "Acknowledgement that the request was accepted for asynchronous processing"
+      },
+      "MetadataResponse": {
+        "type": "object",
+        "properties": {
+          "metadata": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ObjectMetadata"
+            },
+            "description": "Metadata of each object"
+          }
+        },
+        "additionalProperties": true,
+        "description": "Metadata of data model objects or calculated insights"
+      },
+      "SalesforceErrors": {
+        "type": "array",
+        "description": "Standard Salesforce REST error body",
+        "items": {
+          "$ref": "#/components/schemas/SalesforceError"
+        }
+      },
+      "RunResult": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Whether the calculated insight run was started"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "description": "Errors of the calculated insight run, if any"
+          },
+          "resultCode": {
+            "type": "string",
+            "description": "Outcome of an identity resolution run, e.g. `SuccessfullySubmittedIdentityResolutionJobRunRequest`, `IdentityResolutionJobIsAlreadyRunning`, `NoPendingChangesJobRunSkipped` or `ExceededMaximumNumberOfSuccessfulRunsAllowedIn24Hours`"
+          }
+        },
+        "additionalProperties": true,
+        "description": "Result of a run request. A calculated insight run returns `success` and `errors`; an identity resolution run returns `resultCode`"
+      },
+      "IngestRecords": {
+        "required": [
+          "data"
+        ],
+        "type": "object",
+        "properties": {
+          "data": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IngestRecord"
+            },
+            "description": "The records. Every field defined in the object's schema must be present in each record; date-times need fractional seconds, e.g. `2026-10-24T10:15:30.000Z`"
+          }
+        },
+        "description": "Records to ingest into a streaming Ingestion API object"
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "description": "Time of the error"
+          },
+          "error": {
+            "type": "string",
+            "description": "HTTP status text"
+          },
+          "message": {
+            "type": "string",
+            "description": "Error message"
+          },
+          "path": {
+            "type": "string",
+            "description": "Request path"
+          },
+          "tenantId": {
+            "type": "string",
+            "description": "ID of the Data Cloud tenant"
+          },
+          "internalErrorCode": {
+            "type": "string",
+            "description": "Data Cloud error code"
+          },
+          "details": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ErrorResponseDetails"
+              }
+            ],
+            "description": "Further details, such as a validation report"
+          }
+        },
+        "additionalProperties": true,
+        "description": "Tenant-endpoint error body, as documented for record validation. Other errors may carry only some\nof these fields\n"
+      },
+      "ErrorResponseDetails": {
+        "type": "object",
+        "properties": {
+          "validationReport": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ValidationReportEntry"
+            },
+            "description": "Records that failed validation"
+          }
+        },
+        "additionalProperties": true,
+        "description": "Error details"
+      },
+      "QueryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "description": "Rows, keyed by field API name.",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "done": {
+            "type": "boolean",
+            "description": "True when there are no more rows to page through."
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Column metadata, keyed by field API name. Empty when there are no rows"
+          }
+        },
+        "additionalProperties": true,
+        "description": "Rows returned by a profile or calculated insight query, keyed by field API name"
+      },
+      "ObjectMetadata": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "API name of the object"
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Display label of the object"
+          },
+          "category": {
+            "type": "string",
+            "description": "Category of the object, e.g. `Profile`"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldMetadata"
+            },
+            "description": "Fields of the object"
+          },
+          "dimensions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldMetadata"
+            },
+            "description": "Dimensions of the calculated insight"
+          },
+          "measures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldMetadata"
+            },
+            "description": "Measures of the calculated insight"
+          },
+          "indexes": {
+            "type": "array",
+            "description": "Field combinations available for lookup.",
+            "items": {
+              "$ref": "#/components/schemas/ObjectIndex"
+            }
+          },
+          "primaryKeys": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrimaryKeyField"
+            },
+            "description": "Primary key fields of the object"
+          },
+          "relationships": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ObjectRelationship"
+            },
+            "description": "Relationships to other objects"
+          },
+          "partitionBy": {
+            "type": "string",
+            "description": "Calculated insights only."
+          },
+          "latestProcessTime": {
+            "type": "string",
+            "description": "Calculated insights only: time of the latest run. `1970-01-01T00:00:00.00000Z` means the insight has never run"
+          },
+          "latestSuccessfulProcessTime": {
+            "type": "string",
+            "description": "Calculated insights only: time of the latest successful run"
+          }
+        },
+        "additionalProperties": true,
+        "description": "Metadata of a data model object or calculated insight"
+      },
+      "DeleteRecordsRequest": {
+        "required": [
+          "ids"
+        ],
+        "type": "object",
+        "properties": {
+          "ids": {
+            "maxItems": 200,
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Primary keys of the records to delete (max 200)"
+          }
+        },
+        "description": "Primary keys of the records to delete"
+      },
+      "IngestRecord": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "A record whose fields match the object's schema in the Ingestion API connector"
+      },
+      "BulkJob": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Job ID"
+          },
+          "object": {
+            "type": "string",
+            "description": "Object the job loads, from the connector's schema",
+            "x-ballerina-name": "objectName"
+          },
+          "sourceName": {
+            "type": "string",
+            "description": "API name of the Ingestion API connector"
+          },
+          "operation": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BulkJobOperation"
+              }
+            ],
+            "description": "Operation the job performs"
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BulkJobState"
+              }
+            ],
+            "description": "Current state of the job"
+          },
+          "contentType": {
+            "type": "string",
+            "example": "CSV",
+            "description": "Format of the uploaded data, `CSV`"
+          },
+          "apiVersion": {
+            "description": "Ingestion API version, as a string (`\"v1\"`) or a number",
+            "example": "v1"
+          },
+          "contentUrl": {
+            "type": "string",
+            "description": "Path to upload CSV files to, e.g. `/api/v1/ingest/jobs/{id}/batches`. `null` after the job is closed.",
+            "nullable": true
+          },
+          "createdById": {
+            "type": "string",
+            "description": "ID of the user who created the job"
+          },
+          "createdDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Time the job was created"
+          },
+          "systemModstamp": {
+            "type": "string",
+            "description": "Last-modified time. Empty (`\"\"`) on a new job, so no `date-time` format is enforced."
+          },
+          "retries": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Number of times the job was retried. `null` once the job is closed"
+          },
+          "totalProcessingTime": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Total processing time of the job. `null` once the job is closed"
+          }
+        },
+        "additionalProperties": true,
+        "description": "A bulk ingestion job. `systemModstamp` is empty on a new job, and `contentUrl`, `retries` and `totalProcessingTime` are `null` once the job is closed"
+      },
+      "BulkJobList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BulkJob"
+            },
+            "description": "The jobs"
+          }
+        },
+        "additionalProperties": true,
+        "description": "A page of bulk ingestion jobs"
+      },
+      "BulkJobState": {
+        "type": "string",
+        "description": "State of a bulk ingestion job: `Open` → `UploadComplete` → `InProgress` → `JobComplete` or `Failed`, or `Aborted`",
+        "enum": [
+          "Open",
+          "UploadComplete",
+          "InProgress",
+          "JobComplete",
+          "Failed",
+          "Aborted"
+        ]
+      },
+      "BulkJobOperation": {
+        "type": "string",
+        "enum": [
+          "upsert",
+          "delete"
+        ],
+        "description": "Operation a bulk ingestion job performs"
+      },
+      "CreateBulkJobRequest": {
+        "required": [
+          "object",
+          "operation",
+          "sourceName"
+        ],
+        "type": "object",
+        "properties": {
+          "sourceName": {
+            "type": "string",
+            "description": "API name of the Ingestion API connector"
+          },
+          "operation": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BulkJobOperation"
+              }
+            ],
+            "description": "Whether the job upserts or deletes records"
+          },
+          "object": {
+            "type": "string",
+            "description": "Object name from the connector's schema",
+            "x-ballerina-name": "objectName"
+          }
+        },
+        "description": "A bulk ingestion job to create"
+      },
+      "UpdateBulkJobStateRequest": {
+        "required": [
+          "state"
+        ],
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "UploadComplete",
+              "Aborted"
+            ],
+            "description": "`UploadComplete` to queue the uploaded data for processing, or `Aborted` to discard it"
+          }
+        },
+        "description": "The state to move a bulk ingestion job to"
+      },
+      "ObjectIndex": {
+        "type": "object",
+        "properties": {
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldMetadata"
+            },
+            "description": "Fields of the index"
+          }
+        },
+        "additionalProperties": true,
+        "description": "A combination of fields available for lookups"
+      },
+      "PrimaryKeyField": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "API name of the key field"
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Display label of the key field"
+          },
+          "indexOrder": {
+            "type": "string",
+            "description": "Position of the field in the key"
+          }
+        },
+        "additionalProperties": true,
+        "description": "A primary key field of the object"
+      },
+      "ObjectRelationship": {
+        "type": "object",
+        "properties": {
+          "fromEntity": {
+            "type": "string",
+            "description": "API name of the object the relationship starts from"
+          },
+          "toEntity": {
+            "type": "string",
+            "description": "API name of the related object"
+          },
+          "fromEntityAttribute": {
+            "type": "string",
+            "description": "Field of the starting object that holds the key"
+          },
+          "toEntityAttribute": {
+            "type": "string",
+            "description": "Field of the related object that the key matches"
+          },
+          "cardinality": {
+            "type": "string",
+            "example": "NTOONE",
+            "description": "Cardinality of the relationship, e.g. `NTOONE` or `ONETOMANY`"
+          }
+        },
+        "additionalProperties": true,
+        "description": "A relationship from this object to another data model object"
+      },
+      "IdentityResolutionRulesetList": {
+        "type": "object",
+        "properties": {
+          "identityResolutions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IdentityResolutionRuleset"
+            },
+            "description": "The identity resolution rulesets",
+            "x-ballerina-name": "rulesets"
+          }
+        },
+        "additionalProperties": true,
+        "description": "Identity resolution rulesets of the org"
+      },
+      "ValidationReportEntry": {
+        "type": "object",
+        "properties": {
+          "record": {
+            "type": "string",
+            "description": "The failing record, as a JSON string"
+          },
+          "causingExceptions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Why the record failed validation"
+          }
+        },
+        "description": "A record that failed validation and the reasons"
+      },
+      "SalesforceError": {
+        "type": "object",
+        "properties": {
+          "errorCode": {
+            "type": "string",
+            "description": "Salesforce error code, e.g. `NOT_FOUND`"
+          },
+          "message": {
+            "type": "string",
+            "description": "Error message"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Fields the error relates to"
+          }
+        },
+        "additionalProperties": true,
+        "description": "A Salesforce REST API error"
+      }
+    },
+    "responses": {
+      "SalesforceError": {
+        "description": "Standard Salesforce REST error.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/SalesforceErrors"
+            },
+            "example": [
+              {
+                "errorCode": "NOT_FOUND",
+                "message": "The requested resource does not exist"
+              }
+            ]
+          }
+        }
+      },
+      "Accepted": {
+        "description": "Records queued for asynchronous processing",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/AcceptedResponse"
+            },
+            "example": {
+              "accepted": true
+            }
+          }
+        }
+      },
+      "QueryResult": {
+        "description": "Matching rows",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/QueryResponse"
+            }
+          }
+        }
+      },
+      "Error": {
+        "description": "Error.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "parameters": {
+      "SourceName": {
+        "name": "sourceName",
+        "in": "path",
+        "description": "API name of the Ingestion API connector (source) in Data Cloud setup",
+        "required": true,
+        "style": "simple",
+        "explode": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "ObjectName": {
+        "name": "objectName",
+        "in": "path",
+        "description": "Object name from the connector's schema",
+        "required": true,
+        "style": "simple",
+        "explode": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "JobId": {
+        "name": "jobId",
+        "in": "path",
+        "description": "Bulk job ID",
+        "required": true,
+        "style": "simple",
+        "explode": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "DataModelName": {
+        "name": "dataModelName",
+        "in": "path",
+        "description": "API name of a profile-category DMO, e.g. `UnifiedIndividual__dlm`",
+        "required": true,
+        "style": "simple",
+        "explode": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "RecordId": {
+        "name": "recordId",
+        "in": "path",
+        "description": "Record ID, or the value of the field named in `searchKey`",
+        "required": true,
+        "style": "simple",
+        "explode": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "CiName": {
+        "name": "insightName",
+        "in": "path",
+        "description": "API name of the calculated insight, e.g. `IndividualSpend__cio`",
+        "required": true,
+        "style": "simple",
+        "explode": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "Fields": {
+        "name": "fields",
+        "in": "query",
+        "description": "Fields to return (max 50). Without it, only the first 10 fields (alphabetically) come back\n",
+        "required": false,
+        "style": "form",
+        "explode": false,
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "Filters": {
+        "name": "filters",
+        "in": "query",
+        "description": "Comma-separated equality expressions in square brackets, joined with AND, e.g. `[FirstName__c=Alex,LastName__c=Perera]`. On child and insight lookups they apply to the parent object only",
+        "required": false,
+        "style": "form",
+        "explode": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "RequiredFilters": {
+        "name": "filters",
+        "in": "query",
+        "description": "Required. Comma-separated equality expressions in square brackets, joined with AND, e.g.\n`[FirstName__c=Alex]`. Date-times as `BirthDate__c=1990-07-12 00:00:00`\n",
+        "required": true,
+        "style": "form",
+        "explode": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "ProfileLimit": {
+        "name": "limit",
+        "in": "query",
+        "description": "Rows to return. Default and maximum 49,999",
+        "required": false,
+        "style": "form",
+        "explode": true,
+        "schema": {
+          "maximum": 49999,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "InsightLimit": {
+        "name": "limit",
+        "in": "query",
+        "description": "Rows to return. Default and maximum 4,999",
+        "required": false,
+        "style": "form",
+        "explode": true,
+        "schema": {
+          "maximum": 4999,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "Offset": {
+        "name": "offset",
+        "in": "query",
+        "description": "Rows to skip before returning. API v52.0+",
+        "required": false,
+        "style": "form",
+        "explode": true,
+        "schema": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "OrderBy": {
+        "name": "orderby",
+        "in": "query",
+        "description": "Comma-separated sort, e.g. `GenderId__c ASC, Occupation__c DESC`. API v52.0+",
+        "required": false,
+        "style": "form",
+        "explode": true,
+        "schema": {
+          "type": "string"
+        },
+        "x-ballerina-name": "orderBy"
+      },
+      "SearchKey": {
+        "name": "searchKey",
+        "in": "query",
+        "description": "Field to match `id` against instead of the primary key, e.g. `Email__c`",
+        "required": false,
+        "style": "form",
+        "explode": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "Dimensions": {
+        "name": "dimensions",
+        "in": "query",
+        "description": "Dimensions to return. Defaults to all",
+        "required": false,
+        "style": "form",
+        "explode": false,
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "Measures": {
+        "name": "measures",
+        "in": "query",
+        "description": "Measures to return. Defaults to all",
+        "required": false,
+        "style": "form",
+        "explode": false,
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "TimeGranularity": {
+        "name": "timeGranularity",
+        "in": "query",
+        "description": "Rolls measures up to this time range. API v53.0+",
+        "required": false,
+        "style": "form",
+        "explode": true,
+        "schema": {
+          "type": "string",
+          "enum": [
+            "HOUR",
+            "DAY",
+            "MONTH",
+            "QUARTER",
+            "YEAR"
+          ]
+        }
+      }
+    },
+    "securitySchemes": {
+      "OAuth2": {
+        "type": "oauth2",
+        "description": "Salesforce core org OAuth 2.0. The connector uses the core access token directly for the `Runs` endpoints and exchanges it at `POST {core}/services/a360/token` for the Data Cloud token used on the tenant endpoint.",
+        "flows": {
+          "authorizationCode": {
+            "authorizationUrl": "https://login.salesforce.com/services/oauth2/authorize",
+            "tokenUrl": "https://login.salesforce.com/services/oauth2/token",
+            "refreshUrl": "https://login.salesforce.com/services/oauth2/token",
+            "scopes": {
+              "api": "Access Salesforce REST APIs (Connect REST `Runs` endpoints)",
+              "cdp_ingest_api": "Data Cloud Ingestion API",
+              "cdp_profile_api": "Data Cloud Profile API",
+              "cdp_query_api": "Data Cloud query and Calculated Insights APIs",
+              "refresh_token": "Obtain a refresh token"
+            }
+          },
+          "clientCredentials": {
+            "tokenUrl": "https://login.salesforce.com/services/oauth2/token",
+            "scopes": {}
+          },
+          "password": {
+            "tokenUrl": "https://login.salesforce.com/services/oauth2/token",
+            "scopes": {}
+          }
+        }
+      }
+    }
+  }
+}
