@@ -20,3 +20,7 @@ jobs:
       actions: read
     uses: ballerina-platform/ballerina-library/.github/workflows/security-scan-template.yml@main
     secrets: inherit
+    with:
+      # The examples resolve the connector from the local repository, which this workflow doesn't build.
+      # Turn the examples scan back on once they depend on a version released to Central.
+      scan-examples: false
