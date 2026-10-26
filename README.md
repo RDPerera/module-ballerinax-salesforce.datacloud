@@ -106,7 +106,7 @@ Skip this step if you use the client credentials grant.
 
 ## Quickstart
 
-To use the WSO2 Salesforce Data 360 (Data Cloud) Connector in your Ballerina application, update the `.bal` file as follows:
+To use the WSO2 Salesforce Data 360 (Data Cloud) Connector in your integration, update the `.bal` file as follows:
 
 ### Step 1: Import the module
 
@@ -170,7 +170,7 @@ public function main() returns error? {
 }
 ```
 
-### Step 4: Run the Ballerina application
+### Step 4: Run the integration
 
 ```bash
 bal run
