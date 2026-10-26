@@ -29,7 +29,7 @@ These changes are done in order to improve the overall usability, and as workaro
 
 4. Add and reword schema and field descriptions
 - **Original**: Many schemas and fields had no description; schema, operation and response descriptions recorded test observations (`Observed live (2026-10-24)`, `left permissive`) or wrapped code spans over line breaks; and `info.description` described the two replaced bearer schemes and the folder the specification came from.
-- **Updated**: Added descriptions to every schema and field, reworded the observation notes as API behavior, and replaced `info.description` with a summary of the APIs and how they are authenticated. Fields that are `$ref`s were wrapped in `allOf` to carry a description.
+- **Updated**: Added descriptions to every schema and field, reworded the observation notes as API behavior, and replaced `info.description` with a summary of the APIs and how they are authenticated. Following Salesforce's rename of Data Cloud to Data 360, `info.title` and the `x-ballerina-display` label read `Salesforce Data 360 (Data Cloud)`. Fields that are `$ref`s were wrapped in `allOf` to carry a description.
 - **Reason**: The descriptions become the API docs of the generated records; wrapped code spans produced documentation warnings.
 
 5. Rename operations, types and parameters to human-friendly names

@@ -86,7 +86,7 @@ type DataCloudTokenResponse record {
     int|decimal|string expires_in?;
 };
 
-# Write records to Salesforce Data Cloud (Data 360), read unified profiles and calculated insights back,
+# Write records to Salesforce Data 360 (Data Cloud), read unified profiles and calculated insights back,
 # and trigger the identity resolution and insight runs that build them.
 #
 # Data Cloud serves its APIs from two hosts with two different tokens. The `Runs` operations go to the
@@ -96,6 +96,7 @@ type DataCloudTokenResponse record {
 # the tenant endpoint, caches both, exchanges again shortly before the token expires, and on a `401` from
 # the tenant endpoint exchanges again and retries the call once. When the org rejects the core token
 # itself, the client fetches a new one from the configured OAuth2 grant and retries once.
+@display {label: "Salesforce Data 360 (Data Cloud)"}
 public isolated client class Client {
     private final http:Client tokenClient;
     private final CoreAuthConfig & readonly coreAuth;

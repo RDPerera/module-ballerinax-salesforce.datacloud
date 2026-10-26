@@ -5,7 +5,7 @@ name = "salesforce.datacloud"
 version = "1.0.0"
 license = ["Apache-2.0"]
 authors = ["Ballerina"]
-keywords = ["Name/Salesforce Data 360", "Area/Marketing & Social Media", "Vendor/Salesforce", "Cost/Paid", "Type/Connector", "Salesforce", "Data Cloud", "Data 360", "CDP"]
+keywords = ["Name/Salesforce Data 360 (Data Cloud)", "Area/Marketing & Social Media", "Vendor/Salesforce", "Cost/Paid", "Type/Connector", "Salesforce", "Data Cloud", "Data 360", "CDP"]
 icon = "icon.png"
 repository = "https://github.com/ballerina-platform/module-ballerinax-salesforce.datacloud"
 

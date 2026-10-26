@@ -20,10 +20,10 @@
 import ballerina/data.jsondata;
 import ballerina/http;
 
-# Write records to Salesforce Data Cloud (Data 360), read unified profiles and calculated insights back, and trigger the identity resolution and insight runs that build them.
+# Write records to Salesforce Data 360 (Data Cloud), read unified profiles and calculated insights back, and trigger the identity resolution and insight runs that build them.
 # 
 # The `Runs` operations (Connect REST API) are served by the core Salesforce org at `https://{myDomain}/services/data/{apiVersion}` with the org's OAuth 2.0 access token. Every other operation is served by the Data Cloud tenant endpoint with a Data Cloud token, obtained by exchanging the org's access token at `POST https://{myDomain}/services/a360/token`; the exchange also returns the tenant endpoint.
-@display {label: "Salesforce Data Cloud"}
+@display {label: "Salesforce Data 360 (Data Cloud)"}
 isolated client class GeneratedClient {
     final http:Client clientEp;
     # Gets invoked to initialize the `connector`.
