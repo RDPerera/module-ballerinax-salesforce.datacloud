@@ -3,7 +3,6 @@
 [![Build](https://github.com/ballerina-platform/module-ballerinax-salesforce.datacloud/actions/workflows/ci.yml/badge.svg)](https://github.com/ballerina-platform/module-ballerinax-salesforce.datacloud/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/ballerina-platform/module-ballerinax-salesforce.datacloud/branch/main/graph/badge.svg)](https://codecov.io/gh/ballerina-platform/module-ballerinax-salesforce.datacloud)
 [![Trivy](https://github.com/ballerina-platform/module-ballerinax-salesforce.datacloud/actions/workflows/trivy-scan.yml/badge.svg)](https://github.com/ballerina-platform/module-ballerinax-salesforce.datacloud/actions/workflows/trivy-scan.yml)
-[![GraalVM Check](https://github.com/ballerina-platform/module-ballerinax-salesforce.datacloud/actions/workflows/build-with-bal-test-graalvm.yml/badge.svg)](https://github.com/ballerina-platform/module-ballerinax-salesforce.datacloud/actions/workflows/build-with-bal-test-graalvm.yml)
 [![GitHub Last Commit](https://img.shields.io/github/last-commit/ballerina-platform/module-ballerinax-salesforce.datacloud.svg)](https://github.com/ballerina-platform/module-ballerinax-salesforce.datacloud/commits/main)
 [![GitHub Issues](https://img.shields.io/github/issues/ballerina-platform/ballerina-library/module/salesforce.datacloud.svg?label=Open%20Issues)](https://github.com/ballerina-platform/ballerina-library/labels/module%2Fsalesforce.datacloud)
 
