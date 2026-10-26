@@ -7,5 +7,7 @@
 #  - internal state holding tokens obtained at runtime (dataCloudToken, coreClientToken, tokenResponse), and
 #    `auth: config.auth` forwarding of caller-supplied configuration.
 # No credential is embedded in the source; credentials always come from the caller's configuration.
+# TODO: replace these rule exclusions with targeted scan suppressions (with a reason) once `bal scan`
+# supports them (planned for v0.13.0).
 [rule]
 exclude = ["ballerina:13", "ballerina:14"]

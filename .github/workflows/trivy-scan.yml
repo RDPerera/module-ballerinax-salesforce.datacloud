@@ -22,5 +22,6 @@ jobs:
     secrets: inherit
     with:
       # The examples resolve the connector from the local repository, which this workflow doesn't build.
-      # Turn the examples scan back on once they depend on a version released to Central.
+      # Turn the examples scan back on once they can resolve a version released to Central (they scan clean
+      # locally with bal scan 0.12.0).
       scan-examples: false
