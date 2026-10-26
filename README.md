@@ -15,7 +15,7 @@ The `ballerinax/salesforce.datacloud` connector offers APIs to connect and inter
 
 Data 360 serves these APIs from two hosts with two different tokens: the `Runs` operations go to your Salesforce org with its access token, and every other operation goes to the Data 360 tenant endpoint with a Data 360 token. The connector takes only your Salesforce org credentials and handles the rest: it exchanges the org's access token for a Data 360 token, discovers the tenant endpoint, and exchanges again before the token expires.
 
-## Key features
+### Key features
 
 - Stream records into Data 360, delete them by primary key, and validate them against the object's schema before ingesting
 - Load large data sets with bulk ingestion jobs: create a job, upload CSV files, close or abort it, and track it to completion
