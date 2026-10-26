@@ -1,0 +1,20 @@
+name: Daily build
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 3 * * *"
+
+concurrency:
+  # No workflows can run parallel as these are run against the same system
+  group: ${{ github.repository }}
+  cancel-in-progress: true
+
+jobs:
+  call_workflow:
+    name: Run Daily Build Workflow
+    if: ${{ github.repository_owner == 'ballerina-platform' }}
+    uses: ballerina-platform/ballerina-library/.github/workflows/daily-build-connector-template.yml@main
+    secrets: inherit
+    with:
+      repo-name: module-ballerinax-salesforce.datacloud
