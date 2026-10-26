@@ -19,6 +19,6 @@ export IS_LIVE_SERVER=true
 export SF_ORG_URL=https://<your-domain>.my.salesforce.com
 export SF_CLIENT_ID=<consumer-key>
 export SF_CLIENT_SECRET=<consumer-secret>
-export SF_REFRESH_TOKEN=<refresh-token>
+export SF_REFRESH_TOKEN=<refresh-token>   # omit to use the client credentials grant
 bal test --groups live_tests
 ```

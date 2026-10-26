@@ -521,6 +521,10 @@ public isolated client class Client {
             }
             return error(message);
         }
+        if payload["access_token"] is string && payload["instance_url"] !is string {
+            return error("The Data Cloud token exchange returned no tenant endpoint (`instance_url`): Data Cloud "
+                + "isn't set up in this org yet. Start it from Setup > Data Cloud Setup and try again once it's ready.");
+        }
         DataCloudTokenResponse|error tokenResponse = payload.cloneWithType();
         if tokenResponse is error {
             return error(string `Unexpected response from the Data Cloud token exchange: ${payload.toJsonString()}`,

@@ -28,7 +28,7 @@ To use the Data Cloud connector, you need a Salesforce org with Data Cloud provi
 
 4. Leave **Issue JSON Web Token (JWT)-based access tokens for named users** cleared: the Data Cloud token exchange doesn't accept JWT-based access tokens.
 
-5. To use the client credentials grant, also select **Enable Client Credentials Flow**, save, and then under **Policies** set a **Run As** user who has a Data Cloud permission set (e.g. **Data Cloud Admin**).
+5. To use the client credentials grant (recommended for services), also select **Enable Client Credentials Flow**, save, and then under **Policies** set a **Run As** user who has a Data Cloud permission set (e.g. **Data Cloud Admin** or **Data Cloud Architect**).
 
 6. Save the app, then copy its **Consumer Key** and **Consumer Secret** (under **Settings** > **OAuth Settings** > **Consumer Key and Secret**).
 
@@ -54,7 +54,7 @@ To use the Data Cloud connector, you need a Salesforce org with Data Cloud provi
 
 ### Step 3: Prepare Data Cloud for ingestion (ingestion operations only)
 
-1. In Data Cloud Setup, go to **Ingestion API**, click **New**, and name the connector. Its API name is the `sourceName` for the ingestion operations.
+1. In Data Cloud Setup, go to **Ingestion API**, click **New**, and name the connector. That name (as shown in the **Ingestion API** list, not the generated API name) is the `sourceName` of the ingestion operations.
 
 2. Upload an OpenAPI schema (YAML) that defines your objects and their fields. The object names are the `objectName` values of the ingestion operations.
 
@@ -95,6 +95,8 @@ import ballerinax/salesforce.datacloud;
     ```
 
     The connector also accepts the client credentials grant (`{auth: {clientId, clientSecret}}`), the password grant, or an existing org access token (`{auth: {token: accessToken}}`). Token requests go to `<orgUrl>/services/oauth2/token` unless you set `refreshUrl` (refresh token grant) or `tokenUrl` (other grants).
+
+    > **Note:** Salesforce turns on refresh token rotation for new connected and External Client Apps, and then a refresh token can be used only once. The connector keeps the rotated token while it runs, but a refresh token in `Config.toml` stops working after the first run. For services, prefer the client credentials grant (see the setup guide), or turn off rotation in the app's OAuth policies. New orgs also block the username-password flow by default.
 
     > **Note:** Salesforce token responses carry no expiry, so the connector reuses an org access token for `defaultTokenExpTime` (3600 seconds by default). If Salesforce rejects the token earlier, for example because the org's session timeout is shorter, the connector fetches a new one and retries the call. Setting `defaultTokenExpTime` in the `auth` configuration below the session timeout avoids those extra round trips. A plain access token (`{auth: {token: accessToken}}`) can't be renewed.
 

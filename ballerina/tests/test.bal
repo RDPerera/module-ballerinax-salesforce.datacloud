@@ -32,10 +32,13 @@ const PROFILE_DMO = "UnifiedIndividual__dlm";
 const PROFILE_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 const INSIGHT_NAME = "IndividualSpend__cio";
 
-// Against the mock, the core org credentials are a plain access token; live, a refresh token grant whose
-// token URL defaults to the org's own token endpoint.
+// Against the mock, the core org credentials are a plain access token. Live, they are a client credentials grant,
+// or a refresh token grant when `SF_REFRESH_TOKEN` is set; the token URL defaults to the org's own token endpoint.
 final Client datacloud = check new (
-    {auth: isLiveServer ? {clientId, clientSecret, refreshToken} : {token: MOCK_CORE_TOKEN}},
+    {
+        auth: !isLiveServer ? {token: MOCK_CORE_TOKEN}
+            : refreshToken == "" ? {clientId, clientSecret} : {clientId, clientSecret, refreshToken}
+    },
     serviceUrl
 );
 
@@ -658,4 +661,16 @@ isolated function testFixedTokenIsNotRetried() returns error? {
     test:assertTrue(response is http:ClientRequestError);
     // A plain access token can't be renewed, so the rejected call isn't repeated.
     test:assertEquals(getRunsRequestCount(), runsRequests + 1);
+}
+
+@test:Config {
+    groups: ["mock_tests"]
+}
+isolated function testDataCloudNotSetUp() returns error? {
+    Client notSetUpClient = check new ({auth: {token: MOCK_CORE_TOKEN}}, MOCK_TENANT_URL, dataspace = NOT_SET_UP_DATASPACE);
+    MetadataResponse|error response = notSetUpClient->listProfileMetadata();
+    if response !is error {
+        test:assertFail("Expected an error when the exchange returns no tenant endpoint");
+    }
+    test:assertTrue(response.message().includes("Data Cloud isn't set up in this org yet"));
 }

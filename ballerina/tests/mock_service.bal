@@ -32,6 +32,7 @@ const MOCK_TENANT_URL = "http://localhost:9090";
 const SHORT_LIVED_DATASPACE = "short_lived";
 const MALFORMED_RESPONSE_DATASPACE = "malformed_response";
 const UNKNOWN_DATASPACE = "unknown_space";
+const NOT_SET_UP_DATASPACE = "not_set_up";
 
 // Core tokens the OAuth 2.0 token endpoint has issued and not revoked. `MOCK_CORE_TOKEN` is always valid.
 isolated string[] issuedCoreTokens = [];
@@ -276,6 +277,11 @@ service / on ep0 {
         string? dataspace = form["dataspace"];
         if dataspace == UNKNOWN_DATASPACE {
             return <http:Ok>{body: {'error: "invalid_dataspace", error_description: "data space not found"}};
+        }
+        if dataspace == NOT_SET_UP_DATASPACE {
+            // An org whose Data Cloud isn't set up yet gets a token but no tenant endpoint.
+            return <http:Ok>{body: {access_token: "dc-token-no-tenant", instance_url: (), token_type: "Bearer",
+                issued_token_type: "urn:ietf:params:oauth:token-type:jwt", expires_in: 7199}};
         }
         if dataspace == MALFORMED_RESPONSE_DATASPACE {
             return <http:Ok>{body: {token_type: "Bearer"}};
