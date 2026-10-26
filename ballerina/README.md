@@ -35,8 +35,6 @@ To use the Data Cloud connector, you need a Salesforce org with Data Cloud, and 
    | `cdp_query_api` | SQL queries, and calculated insight queries and metadata |
    | `refresh_token, offline_access` | getting a refresh token (refresh token grant only) |
 
-   Don't rely on **Full access (full)**: it doesn't cover the Data Cloud scopes, and the client credentials flow rejects it.
-
    <img src=https://raw.githubusercontent.com/ballerina-platform/module-ballerinax-salesforce.datacloud/main/docs/setup/resources/oauth-settings.png alt="OAuth settings and scopes" style="border:1px solid #000000; width:80%">
 
 3. Under **Flow Enablement**, select **Enable Client Credentials Flow** (recommended for services). Under **Security**, leave **Issue JSON Web Token (JWT)-based access tokens for named users** cleared: the Data Cloud token exchange doesn't accept JWT-based access tokens.
