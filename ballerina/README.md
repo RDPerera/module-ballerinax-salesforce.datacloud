@@ -19,8 +19,6 @@ To use the Data Cloud connector, you need a Salesforce org with Data Cloud, and 
 
 2. Make sure the user the connector acts as has a Data Cloud permission set, e.g. **Data Cloud Admin** or **Data Cloud Architect**.
 
-> **Note:** Free [Developer Edition orgs](https://developer.salesforce.com/signup) include Data Cloud (Data 360) and are enough to try the connector.
-
 ### Step 2: Create an External Client App
 
 1. In Setup, search for **External Client App Manager** and click **New External Client App**. Enter a name and a contact email.
