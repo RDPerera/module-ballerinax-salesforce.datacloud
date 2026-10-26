@@ -25,14 +25,13 @@ import ballerinax/salesforce.datacloud;
 configurable string orgUrl = ?;
 configurable string clientId = ?;
 configurable string clientSecret = ?;
-configurable string refreshToken = ?;
 configurable string sourceName = "CustomerOrders";
 configurable string objectName = "customers";
 configurable decimal pollIntervalSeconds = 30;
 configurable int maxPolls = 40;
 
 public function main() returns error? {
-    datacloud:Client datacloudClient = check new ({auth: {clientId, clientSecret, refreshToken}}, orgUrl);
+    datacloud:Client datacloudClient = check new ({auth: {clientId, clientSecret}}, orgUrl);
 
     // Step 1: Create an upsert job for the object
     datacloud:BulkJob job = check datacloudClient->createBulkJob({

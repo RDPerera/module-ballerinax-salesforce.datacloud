@@ -9,7 +9,7 @@ The `ballerinax/salesforce.datacloud` connector provides practical examples illu
 
 ## Prerequisites
 
-1. Create an External Client App and get a refresh token as described in the [setup guide](../README.md#setup-guide), and set up an Ingestion API connector and data stream for the object the examples load.
+1. Create an External Client App with the client credentials flow as described in the [setup guide](../README.md#setup-guide), and set up an Ingestion API connector and data stream for the object the examples load.
 
 2. Build and push the connector to your local Ballerina repository:
 
@@ -24,7 +24,6 @@ The `ballerinax/salesforce.datacloud` connector provides practical examples illu
     orgUrl = "https://<your-domain>.my.salesforce.com"
     clientId = "<consumer-key>"
     clientSecret = "<consumer-secret>"
-    refreshToken = "<refresh-token>"
     ```
 
 ## Running an example

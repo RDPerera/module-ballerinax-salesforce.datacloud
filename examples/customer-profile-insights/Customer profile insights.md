@@ -18,7 +18,6 @@ Streamed records are processed about every 3 minutes and identity resolution run
   orgUrl = "https://<your-domain>.my.salesforce.com"
   clientId = "<consumer-key>"
   clientSecret = "<consumer-secret>"
-  refreshToken = "<refresh-token>"
   sourceName = "CustomerOrders"
   objectName = "customers"
   customerEmail = "alex@example.com"

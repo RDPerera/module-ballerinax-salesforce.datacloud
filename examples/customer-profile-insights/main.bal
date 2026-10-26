@@ -24,7 +24,6 @@ import ballerinax/salesforce.datacloud;
 configurable string orgUrl = ?;
 configurable string clientId = ?;
 configurable string clientSecret = ?;
-configurable string refreshToken = ?;
 configurable string sourceName = "CustomerOrders";
 configurable string objectName = "customers";
 configurable string customerEmail = "alex@example.com";
@@ -32,7 +31,7 @@ configurable string profileObject = "ssot__Individual__dlm";
 configurable string insightName = "IndividualSpend__cio";
 
 public function main() returns error? {
-    datacloud:Client datacloudClient = check new ({auth: {clientId, clientSecret, refreshToken}}, orgUrl);
+    datacloud:Client datacloudClient = check new ({auth: {clientId, clientSecret}}, orgUrl);
 
     // Step 1: Validate the record against the object's schema. Every schema field must be present.
     datacloud:IngestRecords records = {

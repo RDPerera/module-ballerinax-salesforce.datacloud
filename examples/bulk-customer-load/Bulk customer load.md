@@ -16,7 +16,6 @@ This example loads customer records into Salesforce Data Cloud with a bulk inges
   orgUrl = "https://<your-domain>.my.salesforce.com"
   clientId = "<consumer-key>"
   clientSecret = "<consumer-secret>"
-  refreshToken = "<refresh-token>"
   sourceName = "CustomerOrders"
   objectName = "customers"
   ```
