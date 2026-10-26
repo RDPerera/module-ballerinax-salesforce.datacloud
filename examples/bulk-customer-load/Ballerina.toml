@@ -1,0 +1,14 @@
+[package]
+org = "ballerinax"
+name = "bulk_customer_load"
+version = "0.1.0"
+distribution = "2201.12.0"
+
+[build-options]
+observabilityIncluded = true
+
+[[dependency]]
+org = "ballerinax"
+name = "salesforce.datacloud"
+version = "1.0.0"
+repository = "local"
