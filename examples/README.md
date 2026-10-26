@@ -22,6 +22,8 @@ The WSO2 Salesforce Data 360 (Data Cloud) Connector provides practical examples 
 
     ```toml
     orgUrl = "https://<your-domain>.my.salesforce.com"
+
+    [auth]
     clientId = "<consumer-key>"
     clientSecret = "<consumer-secret>"
     ```

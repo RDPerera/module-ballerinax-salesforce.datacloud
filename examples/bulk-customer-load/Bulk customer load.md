@@ -14,10 +14,12 @@ This example loads customer records into Salesforce Data 360 (Data Cloud) with a
 - Create a `Config.toml` in this directory:
   ```toml
   orgUrl = "https://<your-domain>.my.salesforce.com"
-  clientId = "<consumer-key>"
-  clientSecret = "<consumer-secret>"
   sourceName = "CustomerOrders"
   objectName = "customers"
+
+  [auth]
+  clientId = "<consumer-key>"
+  clientSecret = "<consumer-secret>"
   ```
 
 ## Run the example

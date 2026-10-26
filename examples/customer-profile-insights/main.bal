@@ -22,8 +22,8 @@ import ballerina/io;
 import ballerinax/salesforce.datacloud;
 
 configurable string orgUrl = ?;
-configurable string clientId = ?;
-configurable string clientSecret = ?;
+// The consumer key and secret of the External Client App, as an `[auth]` table in Config.toml.
+configurable datacloud:OAuth2ClientCredentialsGrantConfig auth = ?;
 configurable string sourceName = "CustomerOrders";
 configurable string objectName = "customers";
 configurable string customerEmail = "alex@example.com";
@@ -31,7 +31,7 @@ configurable string profileObject = "ssot__Individual__dlm";
 configurable string insightName = "IndividualSpend__cio";
 
 public function main() returns error? {
-    datacloud:Client datacloudClient = check new ({auth: {clientId, clientSecret}}, orgUrl);
+    datacloud:Client datacloudClient = check new ({auth}, orgUrl);
 
     // Step 1: Validate the record against the object's schema. Every schema field must be present.
     datacloud:IngestRecords records = {
@@ -82,6 +82,6 @@ public function main() returns error? {
     datacloud:QueryResponse insight = check datacloudClient->getProfileCalculatedInsight(profileObject, profileId,
         insightName);
     foreach record {} row in insight.data ?: [] {
-        io:println(string `${insightName}: ${row[insightName].toJsonString()}`);
+        io:println(row.toJsonString());
     }
 }

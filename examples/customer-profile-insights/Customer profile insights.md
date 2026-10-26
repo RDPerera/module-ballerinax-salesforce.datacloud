@@ -16,13 +16,15 @@ Streamed records are processed about every 3 minutes and identity resolution run
 - Create a `Config.toml` in this directory:
   ```toml
   orgUrl = "https://<your-domain>.my.salesforce.com"
-  clientId = "<consumer-key>"
-  clientSecret = "<consumer-secret>"
   sourceName = "CustomerOrders"
   objectName = "customers"
   customerEmail = "alex@example.com"
   profileObject = "ssot__Individual__dlm"
   insightName = "IndividualSpend__cio"
+
+  [auth]
+  clientId = "<consumer-key>"
+  clientSecret = "<consumer-secret>"
   ```
 
 ## Run the example
