@@ -15,6 +15,7 @@
 // under the License.
 
 import ballerina/http;
+import ballerina/jwt;
 import ballerina/mime;
 import ballerina/url;
 
@@ -28,6 +29,9 @@ const MOCK_CLIENT_CREDENTIALS_CORE_TOKEN = "core-client-credentials-token";
 const MOCK_CLIENT_ID = "test-client-id";
 const MOCK_CLIENT_SECRET = "test-client-secret";
 const MOCK_REFRESH_TOKEN = "test-refresh-token";
+const MOCK_JWT_USERNAME = "datacloud.integration@example.com";
+const MOCK_JWT_CORE_TOKEN = "core-jwt-token";
+const JWT_TEST_CERT = "tests/resources/jwt-test-cert.pem";
 const MOCK_TENANT_URL = "http://localhost:9090";
 const SHORT_LIVED_DATASPACE = "short_lived";
 const MALFORMED_RESPONSE_DATASPACE = "malformed_response";
@@ -219,6 +223,9 @@ service / on ep0 {
         }
         map<string> form = check parseForm(check request.getTextPayload());
         string? grantType = form["grant_type"];
+        if grantType == "urn:ietf:params:oauth:grant-type:jwt-bearer" {
+            return issueJwtBearerToken(form["assertion"]);
+        }
         string clientId = form["client_id"] ?: "";
         string clientSecret = form["client_secret"] ?: "";
         string|http:HeaderNotFoundError basic = request.getHeader("Authorization");
@@ -547,6 +554,33 @@ service / on ep0 {
         };
     }
 
+    // ------------------------------------------------------------------ Tenant: Query API v2
+    // A query that ends in `LIMIT 3` returns its rows in two batches.
+    resource function post api/v2/query(@http:Header {name: "Authorization"} string? authorization,
+            @http:Payload map<json> payload) returns json|http:BadRequest|http:Unauthorized {
+        if !isValidDataCloudToken(authorization) {
+            return <http:Unauthorized>{body: unauthorizedBody};
+        }
+        json sql = payload["sql"];
+        if sql !is string || !sql.toUpperAscii().startsWith("SELECT ") {
+            return <http:BadRequest>{body: {'error: "400 BAD_REQUEST", message: "mismatched input. Expecting: <query>"}};
+        }
+        boolean paged = sql.endsWith("LIMIT 3");
+        return sqlBatch(paged ? [["100000001", "Alex", 1250.5d], ["100000002", "Sam", 80d]]
+            : [["100000001", "Alex", 1250.5d]], paged ? "batch-2" : ());
+    }
+
+    resource function get api/v2/query/[string nextBatchId](
+            @http:Header {name: "Authorization"} string? authorization) returns json|http:NotFound|http:Unauthorized {
+        if !isValidDataCloudToken(authorization) {
+            return <http:Unauthorized>{body: unauthorizedBody};
+        }
+        if nextBatchId != "batch-2" {
+            return <http:NotFound>{body: {'error: "404 NOT_FOUND", message: string `Invalid batch Id: ${nextBatchId}`}};
+        }
+        return sqlBatch([["100000003", "Kim", ()]], ());
+    }
+
     // ------------------------------------------------------------------ Core org: Connect REST runs
     resource function get services/data/v62\.0/ssot/identity\-resolutions(
             @http:Header {name: "Authorization"} string? authorization) returns json|http:Unauthorized {
@@ -588,3 +622,52 @@ service / on ep0 {
         return <http:Created>{body: {errors: [], success: true}};
     }
 }
+
+// Issues an org access token for a JWT bearer assertion, checking it the way Salesforce does: signed with the key
+// of the certificate uploaded to the app, issued by the consumer key, for an approved user, with the login
+// audience, and expiring within 3 minutes.
+isolated function issueJwtBearerToken(string? assertion) returns http:Ok|http:BadRequest {
+    if assertion is () {
+        return <http:BadRequest>{body: {'error: "invalid_request", error_description: "missing assertion"}};
+    }
+    jwt:Payload|jwt:Error claims = jwt:validate(assertion, {
+        issuer: MOCK_CLIENT_ID,
+        audience: "https://login.salesforce.com",
+        signatureConfig: {certFile: JWT_TEST_CERT}
+    });
+    if claims is jwt:Error {
+        return <http:BadRequest>{body: {'error: "invalid_grant", error_description: claims.message()}};
+    }
+    int? issuedAt = claims.iat;
+    int? expiresAt = claims.exp;
+    if claims.sub != MOCK_JWT_USERNAME {
+        return <http:BadRequest>{body: {'error: "invalid_grant", error_description: "user hasn't approved this consumer"}};
+    }
+    if issuedAt is () || expiresAt is () || expiresAt - issuedAt > 180 {
+        return <http:BadRequest>{body: {'error: "invalid_grant", error_description: "invalid assertion expiration"}};
+    }
+    string accessToken;
+    lock {
+        accessToken = string `${MOCK_JWT_CORE_TOKEN}-${oauth2TokenRequestCount}`;
+    }
+    lock {
+        issuedCoreTokens.push(accessToken);
+    }
+    return <http:Ok>{body: {access_token: accessToken, instance_url: MOCK_TENANT_URL, token_type: "Bearer"}};
+}
+
+isolated function sqlBatch(json[] rows, string? nextBatchId) returns json => {
+    data: rows,
+    startTime: "2026-10-26T03:11:59.118575744Z",
+    endTime: "2026-10-26T03:11:59.567247587Z",
+    rowCount: rows.length(),
+    queryId: "MTAuNzQuNDYuMTM3Ojc0ODQ_013870ec",
+    nextBatchId,
+    done: nextBatchId is (),
+    metadata: {
+        customer_id__c: {'type: "VARCHAR", placeInOrder: 0, typeCode: 12},
+        first_name__c: {'type: "VARCHAR", placeInOrder: 1, typeCode: 12},
+        total_spend__c: {'type: "DECIMAL", placeInOrder: 2, typeCode: 3}
+    },
+    arrowStream: ()
+};

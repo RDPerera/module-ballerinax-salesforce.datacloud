@@ -51,6 +51,10 @@
     {
       "name": "Runs",
       "description": "Trigger identity resolution and calculated-insight runs (Connect REST API, core org host).\nhttps://developer.salesforce.com/docs/data/connectapi/references/spec\n"
+    },
+    {
+      "name": "Query",
+      "description": "Run ANSI SQL queries over Data Cloud objects (Query API v2)."
     }
   ],
   "paths": {
@@ -1146,6 +1150,96 @@
           }
         }
       ]
+    },
+    "/api/v2/query": {
+      "post": {
+        "tags": [
+          "Query"
+        ],
+        "operationId": "querySql",
+        "summary": "Run a SQL query",
+        "description": "Runs an ANSI SQL query synchronously over data lake objects, data model objects and calculated insights. Rows come back as arrays of column values in the order given by each column's `placeInOrder`. When `done` is `false`, get the remaining rows with `getNextSqlQueryBatch`",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SqlQueryRequest"
+              },
+              "example": {
+                "sql": "SELECT ssot__Id__c, ssot__FirstName__c FROM ssot__Individual__dlm LIMIT 10"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Query results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SqlQueryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v2/query/{nextBatchId}": {
+      "get": {
+        "tags": [
+          "Query"
+        ],
+        "operationId": "getNextSqlQueryBatch",
+        "summary": "Get the next batch of SQL query results",
+        "parameters": [
+          {
+            "name": "nextBatchId",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "explode": false,
+            "description": "The `nextBatchId` of the previous batch",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Query results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SqlQueryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1751,6 +1845,86 @@
         },
         "additionalProperties": true,
         "description": "A Salesforce REST API error"
+      },
+      "SqlQueryRequest": {
+        "type": "object",
+        "required": [
+          "sql"
+        ],
+        "description": "A SQL query",
+        "properties": {
+          "sql": {
+            "type": "string",
+            "description": "ANSI SQL query, e.g. `SELECT ssot__Id__c FROM ssot__Individual__dlm LIMIT 10`"
+          }
+        }
+      },
+      "SqlColumn": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Metadata of a result column",
+        "properties": {
+          "type": {
+            "type": "string",
+            "x-ballerina-name": "dataType",
+            "description": "SQL type of the column, e.g. `VARCHAR`, `DECIMAL`, `TIMESTAMP WITH TIME ZONE`"
+          },
+          "placeInOrder": {
+            "type": "integer",
+            "description": "Position of the column in each row, starting at 0"
+          },
+          "typeCode": {
+            "type": "integer",
+            "description": "JDBC type code of the column"
+          }
+        }
+      },
+      "SqlQueryResponse": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "A batch of SQL query results",
+        "properties": {
+          "data": {
+            "type": "array",
+            "description": "Rows, each an array of column values ordered by the columns' `placeInOrder`",
+            "items": {
+              "type": "array",
+              "items": {}
+            }
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Result columns, keyed by column name",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SqlColumn"
+            }
+          },
+          "rowCount": {
+            "type": "integer",
+            "description": "Number of rows in this batch"
+          },
+          "done": {
+            "type": "boolean",
+            "description": "Whether this is the last batch"
+          },
+          "nextBatchId": {
+            "type": "string",
+            "nullable": true,
+            "description": "ID to get the next batch with. `null` when `done` is `true`"
+          },
+          "queryId": {
+            "type": "string",
+            "description": "ID of the query"
+          },
+          "startTime": {
+            "type": "string",
+            "description": "Time the query started"
+          },
+          "endTime": {
+            "type": "string",
+            "description": "Time the query ended"
+          }
+        }
       }
     },
     "responses": {

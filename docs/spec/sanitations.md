@@ -61,6 +61,15 @@ These changes are done in order to improve the overall usability, and as workaro
 - **Change**: `ballerina/client.bal` wraps two `GeneratedClient` instances. One targets the core org (`<serviceUrl>/services/data/<apiVersion>`) with the current core access token and serves the `Runs` operations. The other targets the Data Cloud tenant endpoint and serves every other operation. On the first tenant call the client exchanges the org access token at `POST <serviceUrl>/services/a360/token` (`grant_type=urn:salesforce:grant-type:external:cdp`, `subject_token=<org token>`, `subject_token_type=urn:ietf:params:oauth:token-type:access_token`, with `dataspace` as a query parameter when configured, as Salesforce's own Data Cloud clients send it), builds the tenant client from the returned `instance_url` (prefixing `https://`, since it comes without a scheme) and `access_token`, and caches it. It exchanges again 60 seconds (at most half the token's lifetime) before `expires_in` runs out, and when the tenant endpoint returns `401` it exchanges again and retries the call once. The core token comes from a single OAuth 2.0 grant shared by the exchange and the `Runs` client, so each grant is fetched once and a rotated refresh token stays in one place. When the org rejects the core token (a `401` from a `Runs` operation, or an exchange that answers `401` or an OAuth 2.0 `invalid_request`, `invalid_grant` or `invalid_token` error), the client fetches a new one from the OAuth 2.0 grant and retries once; a configured plain access token can't be renewed, so the call is not repeated. The exchange reports failures as `200 OK` with an OAuth 2.0 error body, so the client checks the body as well as the status. In an org whose Data Cloud isn't set up yet, the exchange returns a token without an `instance_url`; the client reports that as such.
 - **Reason**: Data Cloud serves its APIs from two hosts with two tokens, and the tenant host is known only after the token exchange. The generator ignores path-level `servers` and produces one client with one static base URL and auth configuration, and the exchange can't be expressed as an OpenAPI security scheme. See the [Data Cloud authentication guide](https://developer.salesforce.com/docs/atlas.en-us.252.0.c360a_api.meta/c360a_api/c360a_getting_started_with_cdp.htm).
 
+7. Add the Query API v2
+- **Original**: The specification covered ingestion, profiles, calculated insights and runs, but not SQL queries.
+- **Updated**: Added `POST /api/v2/query` (`querySql`) and `GET /api/v2/query/{nextBatchId}` (`getNextSqlQueryBatch`) under a new `Query` tag, with the `SqlQueryRequest`, `SqlQueryResponse` and `SqlColumn` schemas (`type` exposed as `dataType` with `x-ballerina-name`).
+- **Reason**: SQL queries over data lake objects, data model objects and calculated insights are a core Data Cloud capability that Salesforce's own Python and JDBC clients and the MuleSoft connector provide. The request and response shapes were taken from a live Data Cloud org: rows are arrays of column values ordered by each column's `placeInOrder`, `metadata` is keyed by column name, and `nextBatchId` is `null` on the last batch. The asynchronous Query API v3 isn't added: it returns the query ID only in a response header, which the generated client doesn't expose.
+
+8. Add the OAuth 2.0 JWT bearer grant
+- **Change**: `ballerina/client.bal` defines `OAuth2JwtBearerGrantConfig` (consumer key, username, private key, audience) as another `ConnectionConfig.auth` option. For every token request the client signs a new JWT that expires within 3 minutes, as Salesforce requires, and posts it to the org's token endpoint with `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer`. The resulting token is used for the token exchange and the `Runs` operations like any other org token, including renewal when the org rejects it.
+- **Reason**: The JWT bearer flow is the standard certificate-based server-to-server login for Salesforce, supported by the other Data Cloud clients. OpenAPI has no JWT bearer flow, and `http:OAuth2JwtBearerGrantConfig` takes a pre-signed JWT that would expire after 3 minutes, so the grant is implemented in the client and added to the generated `ConnectionConfig` in a post-generation step.
+
 ## OpenAPI cli command
 
 The following command generates the raw OpenAPI-derived client. The command should be executed from the repository root directory.
@@ -72,9 +81,12 @@ bal openapi -i docs/spec/openapi.json -o /tmp/datacloud-gen --mode client --lice
 
 Note: The license year is hardcoded to 2026, change if necessary.
 
-### Post-generation step: rename the generated client class
+### Post-generation steps
 
-Copy `types.bal` and `utils.bal` into `ballerina` as-is. Copy the generated `client.bal` to `ballerina/oas_client.bal` and
-rename its class to `GeneratedClient` (`public isolated client class Client {` → `isolated client class GeneratedClient {`).
+1. Copy the generated `client.bal` to `ballerina/oas_client.bal` and rename its class to `GeneratedClient`
+   (`public isolated client class Client {` → `isolated client class GeneratedClient {`). Copy `utils.bal` as-is.
+2. In `types.bal`, add `|OAuth2JwtBearerGrantConfig` to the type of `ConnectionConfig.auth` (see item 8).
+3. In `oas_client.bal`, replace `{auth: config.auth,` with `{auth: toHttpClientAuth(config.auth),`, so that the
+   generated client never hands a JWT bearer config to `http:Client` (see item 8).
 
 `ballerina/client.bal` is a hand-written wrapper around `GeneratedClient` that handles the two hosts and tokens of Data Cloud (see item 6). It is intentionally **not** regenerated.

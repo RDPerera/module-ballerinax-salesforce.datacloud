@@ -11,7 +11,7 @@
 
 [Salesforce Data Cloud](https://www.salesforce.com/data/) (Data 360) is Salesforce's customer data platform. It ingests data from any source, unifies it into customer profiles through identity resolution, and computes calculated insights on those profiles.
 
-The `ballerinax/salesforce.datacloud` connector offers APIs to connect and interact with the [Data Cloud APIs](https://developer.salesforce.com/docs/data/data-cloud-ref/guide/c360a-api-get-started.htm), enabling operations to stream and bulk-load records with the Ingestion API, read unified profiles with the Profile API, query calculated insights, and trigger identity resolution and calculated insight runs.
+The `ballerinax/salesforce.datacloud` connector offers APIs to connect and interact with the [Data Cloud APIs](https://developer.salesforce.com/docs/data/data-cloud-ref/guide/c360a-api-get-started.htm), enabling operations to stream and bulk-load records with the Ingestion API, read unified profiles with the Profile API, query calculated insights, run SQL queries with the Query API, and trigger identity resolution and calculated insight runs.
 
 Data Cloud serves these APIs from two hosts with two different tokens: the `Runs` operations go to your Salesforce org with its access token, and every other operation goes to the Data Cloud tenant endpoint with a Data Cloud token. The connector takes only your Salesforce org credentials and handles the rest: it exchanges the org's access token for a Data Cloud token, discovers the tenant endpoint, and exchanges again before the token expires.
 
@@ -40,14 +40,14 @@ To use the Data Cloud connector, you need a Salesforce org with Data Cloud, and 
    | `api` | the `Runs` operations (identity resolution and calculated insight runs) |
    | `cdp_ingest_api` | streaming and bulk ingestion |
    | `cdp_profile_api` | profile lookups |
-   | `cdp_query_api` | calculated insight queries and metadata |
+   | `cdp_query_api` | SQL queries, and calculated insight queries and metadata |
    | `refresh_token, offline_access` | getting a refresh token (refresh token grant only) |
 
    Don't rely on **Full access (full)**: it doesn't cover the Data Cloud scopes, and the client credentials flow rejects it.
 
    <img src=https://raw.githubusercontent.com/ballerina-platform/module-ballerinax-salesforce.datacloud/main/docs/setup/resources/oauth-settings.png alt="OAuth settings and scopes" style="border:1px solid #000000; width:80%">
 
-3. Under **Flow Enablement**, select **Enable Client Credentials Flow** (recommended for services). Under **Security**, leave **Issue JSON Web Token (JWT)-based access tokens for named users** cleared: the Data Cloud token exchange doesn't accept JWT-based access tokens.
+3. Under **Flow Enablement**, select **Enable Client Credentials Flow** (recommended for services), or **Enable JWT Bearer Flow** to authenticate with a certificate instead of a secret (see the JWT bearer grant below). Under **Security**, leave **Issue JSON Web Token (JWT)-based access tokens for named users** cleared: the Data Cloud token exchange doesn't accept JWT-based access tokens.
 
    New apps always require PKCE and rotate refresh tokens (each refresh token can be used only once); these settings can't be changed. The connector keeps the rotated token while it runs, but a refresh token saved in configuration stops working after one run, so prefer the client credentials grant for anything that restarts.
 
@@ -60,6 +60,20 @@ To use the Data Cloud connector, you need a Salesforce org with Data Cloud, and 
    <img src=https://raw.githubusercontent.com/ballerina-platform/module-ballerinax-salesforce.datacloud/main/docs/setup/resources/consumer-key-and-secret-button.png alt="Open the consumer key and secret" style="border:1px solid #000000; width:80%">
 
    <img src=https://raw.githubusercontent.com/ballerina-platform/module-ballerinax-salesforce.datacloud/main/docs/setup/resources/consumer-key-and-secret.png alt="Copy the consumer key and secret" style="border:1px solid #000000; width:80%">
+
+#### JWT bearer grant (optional)
+
+To authenticate with a private key instead of a consumer secret:
+
+1. Create a private key and a certificate for it:
+
+   ```bash
+   openssl req -x509 -newkey rsa:2048 -nodes -keyout private-key.pem -out certificate.pem -days 365 -subj "/CN=datacloud-connector"
+   ```
+
+2. In the app's OAuth settings, select **Enable JWT Bearer Flow** and upload `certificate.pem`. Keep `private-key.pem` secret: the connector signs its token requests with it.
+
+3. After creating the app, open its **Policies** tab, click **Edit**, set **Permitted Users** to **Admin approved users are pre-authorized**, and add the profile or permission set of the user the connector acts as.
 
 ### Step 3: Get a refresh token (refresh token grant only)
 
@@ -129,7 +143,19 @@ import ballerinax/salesforce.datacloud;
     final datacloud:Client datacloudClient = check new ({auth: {clientId, clientSecret}}, orgUrl);
     ```
 
-    The connector also accepts the refresh token grant (`{auth: {clientId, clientSecret, refreshToken}}`), the password grant, or an existing org access token (`{auth: {token: accessToken}}`). Token requests go to `<orgUrl>/services/oauth2/token` unless you set `refreshUrl` (refresh token grant) or `tokenUrl` (other grants).
+    The connector also accepts the JWT bearer grant, the refresh token grant (`{auth: {clientId, clientSecret, refreshToken}}`), the password grant, or an existing org access token (`{auth: {token: accessToken}}`). Token requests go to `<orgUrl>/services/oauth2/token` unless you set `refreshUrl` (refresh token grant) or `tokenUrl` (other grants). With the JWT bearer grant, the connector signs a new short-lived JWT with your private key for every token request:
+
+    ```ballerina
+    final datacloud:Client datacloudClient = check new ({
+        auth: {
+            clientId,
+            username: "<salesforce-username>",
+            privateKey: {keyFile: "<path-to-private-key.pem>"}
+        }
+    }, orgUrl);
+    ```
+
+    For a sandbox, also set `audience: "https://test.salesforce.com"`.
 
     > **Note:** New apps rotate refresh tokens, so a refresh token can be used only once. The connector keeps the rotated token while it runs, but a refresh token in `Config.toml` stops working after the first run. New orgs also block the username-password flow by default. For services, use the client credentials grant.
 
@@ -177,6 +203,20 @@ public function main() returns error? {
             row["ssot__PartyId__c"].toString());
         io:println(profile.data);
     }
+}
+```
+
+#### Run a SQL query
+
+```ballerina
+public function main() returns error? {
+    datacloud:SqlQueryResponse result = check datacloudClient->querySql({
+        sql: "SELECT ssot__Id__c, ssot__FirstName__c FROM ssot__Individual__dlm LIMIT 10"
+    });
+    foreach anydata[] row in result.data ?: [] {
+        io:println(row);
+    }
+    // When `done` is false, get the remaining rows with `getNextSqlQueryBatch(result.nextBatchId)`.
 }
 ```
 

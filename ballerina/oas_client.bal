@@ -32,7 +32,7 @@ isolated client class GeneratedClient {
     # + serviceUrl - URL of the target service 
     # + return - An error if connector initialization failed 
     public isolated function init(ConnectionConfig config, string serviceUrl = "https://tenant.c360a.salesforce.com") returns error? {
-        http:ClientConfiguration httpClientConfig = {auth: config.auth, httpVersion: config.httpVersion, http1Settings: config.http1Settings, http2Settings: config.http2Settings, timeout: config.timeout, forwarded: config.forwarded, followRedirects: config.followRedirects, poolConfig: config.poolConfig, cache: config.cache, compression: config.compression, circuitBreaker: config.circuitBreaker, retryConfig: config.retryConfig, cookieConfig: config.cookieConfig, responseLimits: config.responseLimits, secureSocket: config.secureSocket, proxy: config.proxy, socketConfig: config.socketConfig, validation: config.validation, laxDataBinding: config.laxDataBinding};
+        http:ClientConfiguration httpClientConfig = {auth: toHttpClientAuth(config.auth), httpVersion: config.httpVersion, http1Settings: config.http1Settings, http2Settings: config.http2Settings, timeout: config.timeout, forwarded: config.forwarded, followRedirects: config.followRedirects, poolConfig: config.poolConfig, cache: config.cache, compression: config.compression, circuitBreaker: config.circuitBreaker, retryConfig: config.retryConfig, cookieConfig: config.cookieConfig, responseLimits: config.responseLimits, secureSocket: config.secureSocket, proxy: config.proxy, socketConfig: config.socketConfig, validation: config.validation, laxDataBinding: config.laxDataBinding};
         self.clientEp = check new (serviceUrl, httpClientConfig);
     }
 
@@ -284,5 +284,27 @@ isolated client class GeneratedClient {
         string resourcePath = string `/ssot/calculated-insights/${getEncodedUri(insightName)}/actions/run`;
         http:Request request = new;
         return self.clientEp->post(resourcePath, request, headers);
+    }
+
+    # Run a SQL query
+    #
+    # + headers - Headers to be sent with the request 
+    # + return - Query results 
+    remote isolated function querySql(SqlQueryRequest payload, map<string|string[]> headers = {}) returns SqlQueryResponse|error {
+        string resourcePath = string `/api/v2/query`;
+        http:Request request = new;
+        json jsonBody = jsondata:toJson(payload);
+        request.setPayload(jsonBody, "application/json");
+        return self.clientEp->post(resourcePath, request, headers);
+    }
+
+    # Get the next batch of SQL query results
+    #
+    # + nextBatchId - The `nextBatchId` of the previous batch
+    # + headers - Headers to be sent with the request 
+    # + return - Query results 
+    remote isolated function getNextSqlQueryBatch(string nextBatchId, map<string|string[]> headers = {}) returns SqlQueryResponse|error {
+        string resourcePath = string `/api/v2/query/${getEncodedUri(nextBatchId)}`;
+        return self.clientEp->get(resourcePath, headers);
     }
 }

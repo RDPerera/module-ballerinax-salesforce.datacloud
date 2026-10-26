@@ -14,7 +14,9 @@
 // specific language governing permissions and limitations
 // under the License.
 
+import ballerina/crypto;
 import ballerina/http;
+import ballerina/jwt;
 import ballerina/time;
 import ballerina/url;
 
@@ -27,12 +29,51 @@ const DATA_CLOUD_TOKEN_PATH = "/services/a360/token";
 const CDP_GRANT_TYPE = "urn:salesforce:grant-type:external:cdp";
 const ACCESS_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:access_token";
 const AUTH_HEADER_PREFIX = "Bearer ";
+const JWT_BEARER_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer";
+// Salesforce rejects JWT bearer assertions that expire more than 3 minutes after they are issued.
+const decimal JWT_ASSERTION_LIFETIME = 180;
 // Exchange again this many seconds (at most half the token's lifetime) before the Data Cloud token expires.
 const decimal TOKEN_EXPIRY_SKEW = 60;
 // OAuth 2.0 errors with which the token exchange rejects the core token (e.g. `invalid subject token`).
 final readonly & string[] SUBJECT_TOKEN_ERRORS = ["invalid_request", "invalid_grant", "invalid_token"];
 // Assumed lifetime when the exchange response carries no `expires_in`.
 const decimal DEFAULT_TOKEN_LIFETIME = 900;
+
+# OAuth 2.0 JWT bearer grant configuration. For every token request the connector signs a new short-lived JWT
+# with the private key, whose certificate is uploaded to the External Client App, and exchanges it for an org
+# access token.
+public type OAuth2JwtBearerGrantConfig record {|
+    # Consumer key of the External Client App (the JWT issuer)
+    string clientId;
+    # Username of the Salesforce user the connector acts as (the JWT subject). The user must be approved for the app
+    string username;
+    # The private key to sign the JWT with: a PEM key file, or a key in a PKCS#12 keystore
+    JwtSigningKeyFile|JwtSigningKeyStore privateKey;
+    # Audience of the JWT: `https://login.salesforce.com` for production orgs, `https://test.salesforce.com` for sandboxes
+    string audience = "https://login.salesforce.com";
+    # Token endpoint. Left at its default, token requests go to the org's own `/services/oauth2/token`
+    string tokenUrl = DEFAULT_TOKEN_URL;
+    # How long (in seconds) an org access token is reused. Salesforce token responses carry no expiry
+    decimal defaultTokenExpTime = 3600;
+|};
+
+# A PEM private key file to sign JWT bearer assertions with.
+public type JwtSigningKeyFile record {|
+    # Path to the PEM private key file
+    string keyFile;
+    # Password of the private key, if it is encrypted
+    string keyPassword?;
+|};
+
+# A private key in a PKCS#12 keystore to sign JWT bearer assertions with.
+public type JwtSigningKeyStore record {|
+    # The keystore
+    crypto:KeyStore keyStore;
+    # Alias of the private key in the keystore
+    string keyAlias;
+    # Password of the private key
+    string keyPassword;
+|};
 
 // The token exchange rejected the core token, which may have expired or been revoked.
 type SubjectTokenRejectedError distinct error;
@@ -64,7 +105,7 @@ public isolated client class Client {
 
     // The single source of core tokens, for both the Runs operations and the token exchange. Replaced to
     // force a new token when the org rejects the cached one.
-    private http:ClientOAuth2Handler|string coreTokenProvider;
+    private http:ClientOAuth2Handler|JwtBearerTokenProvider|string coreTokenProvider;
     private GeneratedClient? coreClient = ();
     private string coreClientToken = "";
 
@@ -98,6 +139,10 @@ public isolated client class Client {
         // An OAuth2 grant fetches its first token here, so wrong credentials fail at initialization.
         if coreAuth is http:BearerTokenConfig {
             self.coreTokenProvider = coreAuth.token;
+        } else if coreAuth is OAuth2JwtBearerGrantConfig {
+            JwtBearerTokenProvider provider = check new (coreAuth, toHttpClientConfig(config));
+            _ = check provider.getToken();
+            self.coreTokenProvider = provider;
         } else {
             http:ClientOAuth2Handler|error provider = trap new (coreAuth);
             if provider is error {
@@ -411,6 +456,39 @@ public isolated client class Client {
         return response;
     }
 
+    # Run a SQL query
+    #
+    # + payload - The SQL query. It runs synchronously over data lake objects, data model objects and calculated
+    #             insights. Rows come back as arrays of column values ordered by each column's `placeInOrder`
+    # + headers - Headers to be sent with the request
+    # + return - The first batch of results. When `done` is `false`, get the rest with `getNextSqlQueryBatch`
+    remote isolated function querySql(SqlQueryRequest payload, map<string|string[]> headers = {})
+            returns SqlQueryResponse|error {
+        [GeneratedClient, string] [tenant, token] = check self.getTenantClient();
+        SqlQueryResponse|error response = tenant->querySql(payload, headers);
+        if isUnauthorized(response) {
+            [tenant, _] = check self.getTenantClient(token);
+            return tenant->querySql(payload, headers);
+        }
+        return response;
+    }
+
+    # Get the next batch of SQL query results
+    #
+    # + nextBatchId - The `nextBatchId` of the previous batch
+    # + headers - Headers to be sent with the request
+    # + return - The next batch of results
+    remote isolated function getNextSqlQueryBatch(string nextBatchId, map<string|string[]> headers = {})
+            returns SqlQueryResponse|error {
+        [GeneratedClient, string] [tenant, token] = check self.getTenantClient();
+        SqlQueryResponse|error response = tenant->getNextSqlQueryBatch(nextBatchId, headers);
+        if isUnauthorized(response) {
+            [tenant, _] = check self.getTenantClient(token);
+            return tenant->getNextSqlQueryBatch(nextBatchId, headers);
+        }
+        return response;
+    }
+
     # List identity resolution rulesets
     #
     # + headers - Headers to be sent with the request
@@ -570,13 +648,18 @@ public isolated client class Client {
     // access token can't be renewed and is returned as is.
     private isolated function getCoreToken(string? rejectedToken = ()) returns string|error {
         lock {
-            http:ClientOAuth2Handler|string provider = self.coreTokenProvider;
+            http:ClientOAuth2Handler|JwtBearerTokenProvider|string provider = self.coreTokenProvider;
             if provider is string {
                 return provider;
             }
-            string token = check toAccessToken(provider);
+            if provider is JwtBearerTokenProvider {
+                JwtBearerTokenProvider jwtProvider = <JwtBearerTokenProvider>provider;
+                return jwtProvider.getToken(rejectedToken);
+            }
+            http:ClientOAuth2Handler oauth2Provider = <http:ClientOAuth2Handler>provider;
+            string token = check toAccessToken(oauth2Provider);
             CoreAuthConfig & readonly coreAuth = self.coreAuth;
-            if token != rejectedToken || coreAuth is http:BearerTokenConfig {
+            if token != rejectedToken || coreAuth is http:BearerTokenConfig || coreAuth is OAuth2JwtBearerGrantConfig {
                 return token;
             }
             http:ClientOAuth2Handler|error newProvider = trap new (coreAuth);
@@ -592,7 +675,59 @@ public isolated client class Client {
 
 // The `auth` options of `ConnectionConfig`.
 type CoreAuthConfig OAuth2ClientCredentialsGrantConfig|OAuth2PasswordGrantConfig|http:BearerTokenConfig
-    |OAuth2RefreshTokenGrantConfig;
+    |OAuth2RefreshTokenGrantConfig|OAuth2JwtBearerGrantConfig;
+
+// The `auth` for an `http:Client` built by `GeneratedClient` (see the post-generation steps in `sanitations.md`).
+// `http:Client` has no JWT bearer grant that signs a new assertion per request, so a JWT bearer config maps to no
+// `auth`; this client always builds its generated clients with an access token instead.
+isolated function toHttpClientAuth(CoreAuthConfig auth) returns http:ClientAuthConfig? {
+    return auth is OAuth2JwtBearerGrantConfig ? () : auth;
+}
+
+// Fetches org access tokens with the OAuth 2.0 JWT bearer grant, signing a new short-lived assertion for every
+// token request, and reuses a token for `defaultTokenExpTime` seconds.
+distinct isolated class JwtBearerTokenProvider {
+    private final http:Client tokenClient;
+    private final OAuth2JwtBearerGrantConfig & readonly config;
+    private string token = "";
+    private decimal tokenExpiry = 0;
+
+    isolated function init(OAuth2JwtBearerGrantConfig & readonly config, http:ClientConfiguration clientConfig)
+            returns error? {
+        self.config = config;
+        self.tokenClient = check new (config.tokenUrl, clientConfig);
+    }
+
+    // Returns the cached token, or a new one when there is none yet, it has expired, or it is `rejectedToken`.
+    isolated function getToken(string? rejectedToken = ()) returns string|error {
+        lock {
+            if self.token != "" && self.token != rejectedToken && time:monotonicNow() < self.tokenExpiry {
+                return self.token;
+            }
+            string assertion = check jwt:issue({
+                issuer: self.config.clientId,
+                username: self.config.username,
+                audience: self.config.audience,
+                expTime: JWT_ASSERTION_LIFETIME,
+                signatureConfig: {config: self.config.privateKey}
+            });
+            http:Request request = new;
+            request.setTextPayload(string `grant_type=${check url:encode(JWT_BEARER_GRANT_TYPE, "UTF-8")}`
+                + string `&assertion=${assertion}`, "application/x-www-form-urlencoded");
+            http:Response response = check self.tokenClient->post("", request);
+            json|error payload = response.getJsonPayload();
+            if response.statusCode < 200 || response.statusCode >= 300 || payload !is map<json>
+                    || payload["access_token"] !is string {
+                string|error body = payload is json ? payload.toJsonString() : response.getTextPayload();
+                return error(string `Failed to get a Salesforce access token with the JWT bearer grant. `
+                    + string `Status: ${response.statusCode}, body: ${body is string ? body : ""}`);
+            }
+            self.token = <string>payload["access_token"];
+            self.tokenExpiry = time:monotonicNow() + self.config.defaultTokenExpTime;
+            return self.token;
+        }
+    }
+}
 
 isolated function toAccessToken(http:ClientOAuth2Handler provider) returns string|error {
     map<string|string[]> securityHeaders = check provider.getSecurityHeaders();
@@ -618,6 +753,11 @@ isolated function resolveTokenUrl(CoreAuthConfig auth, string orgUrl) returns Co
     }
     if auth is OAuth2PasswordGrantConfig && auth.tokenUrl == DEFAULT_TOKEN_URL {
         OAuth2PasswordGrantConfig resolved = {...auth};
+        resolved.tokenUrl = orgTokenUrl;
+        return resolved;
+    }
+    if auth is OAuth2JwtBearerGrantConfig && auth.tokenUrl == DEFAULT_TOKEN_URL {
+        OAuth2JwtBearerGrantConfig resolved = {...auth};
         resolved.tokenUrl = orgTokenUrl;
         return resolved;
     }

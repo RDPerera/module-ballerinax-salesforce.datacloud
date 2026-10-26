@@ -47,6 +47,12 @@ public type OAuth2ClientCredentialsGrantConfig record {|
     string tokenUrl = "https://login.salesforce.com/services/oauth2/token";
 |};
 
+# A SQL query
+public type SqlQueryRequest record {
+    # ANSI SQL query, e.g. `SELECT ssot__Id__c FROM ssot__Individual__dlm LIMIT 10`
+    string sql;
+};
+
 # A field, dimension or measure of a data model object or calculated insight
 public type FieldMetadata record {
     # API name of the field
@@ -216,7 +222,7 @@ public type RunResult record {
 @display {label: "Connection Config"}
 public type ConnectionConfig record {|
     # Configurations related to client authentication
-    OAuth2ClientCredentialsGrantConfig|OAuth2PasswordGrantConfig|http:BearerTokenConfig|OAuth2RefreshTokenGrantConfig auth;
+    OAuth2ClientCredentialsGrantConfig|OAuth2PasswordGrantConfig|http:BearerTokenConfig|OAuth2RefreshTokenGrantConfig|OAuth2JwtBearerGrantConfig auth;
     # The HTTP version understood by the client
     http:HttpVersion httpVersion = http:HTTP_2_0;
     # Configurations related to HTTP/1.x protocol
@@ -322,6 +328,26 @@ public type GetProfileQueries record {
     string[] fields?;
 };
 
+# A batch of SQL query results
+public type SqlQueryResponse record {
+    # Rows, each an array of column values ordered by the columns' `placeInOrder`
+    anydata[][] data?;
+    # Result columns, keyed by column name
+    record {|SqlColumn...;|} metadata?;
+    # Number of rows in this batch
+    int rowCount?;
+    # Whether this is the last batch
+    boolean done?;
+    # ID to get the next batch with. `null` when `done` is `true`
+    string? nextBatchId?;
+    # ID of the query
+    string queryId?;
+    # Time the query started
+    string startTime?;
+    # Time the query ended
+    string endTime?;
+};
+
 # OAuth2 Password Grant Configs
 public type OAuth2PasswordGrantConfig record {|
     *http:OAuth2PasswordGrantConfig;
@@ -389,6 +415,17 @@ public type ObjectMetadata record {
     string latestProcessTime?;
     # Calculated insights only: time of the latest successful run
     string latestSuccessfulProcessTime?;
+};
+
+# Metadata of a result column
+public type SqlColumn record {
+    # SQL type of the column, e.g. `VARCHAR`, `DECIMAL`, `TIMESTAMP WITH TIME ZONE`
+    @jsondata:Name {value: "type"}
+    string dataType?;
+    # Position of the column in each row, starting at 0
+    int placeInOrder?;
+    # JDBC type code of the column
+    int typeCode?;
 };
 
 # Represents the Queries record for the operation: getProfileCalculatedInsight

@@ -510,6 +510,12 @@ function testEveryTenantOperationRecoversFromUnauthorized() returns error? {
         },
         function() returns any|error {
             return recoveringClient->queryCalculatedInsight(INSIGHT_NAME);
+        },
+        function() returns any|error {
+            return recoveringClient->querySql({sql: "SELECT customer_id__c FROM CustomerOrders_customers__dll LIMIT 3"});
+        },
+        function() returns any|error {
+            return recoveringClient->getNextSqlQueryBatch("batch-2");
         }
     ];
     // Obtain a first token, so that every operation below starts with one the tenant endpoint then rejects.
@@ -673,4 +679,134 @@ isolated function testDataCloudNotSetUp() returns error? {
         test:assertFail("Expected an error when the exchange returns no tenant endpoint");
     }
     test:assertTrue(response.message().includes("Data Cloud isn't set up in this org yet"));
+}
+
+// ---------------------------------------------------------------------------------- SQL queries
+
+@test:Config {
+    groups: ["live_tests", "mock_tests"]
+}
+isolated function testQuerySql() returns error? {
+    SqlQueryResponse response = check datacloud->querySql({
+        sql: "SELECT ssot__Id__c, ssot__FirstName__c FROM ssot__Individual__dlm LIMIT 1"
+    });
+    test:assertTrue(response.data is anydata[][]);
+    test:assertTrue(response.metadata is record {|SqlColumn...;|});
+}
+
+@test:Config {
+    groups: ["mock_tests"]
+}
+isolated function testQuerySqlInBatches() returns error? {
+    SqlQueryResponse first = check datacloud->querySql({
+        sql: "SELECT customer_id__c, first_name__c, total_spend__c FROM CustomerOrders_customers__dll LIMIT 3"
+    });
+    anydata[][] rows = first.data ?: [];
+    test:assertEquals(first.done, false);
+    test:assertEquals(rows.length(), 2);
+    test:assertEquals(rows[0][1], "Alex");
+    test:assertEquals(rows[0][2], 1250.5d);
+    record {|SqlColumn...;|} columns = first.metadata ?: {};
+    test:assertEquals(columns["total_spend__c"]?.dataType, "DECIMAL");
+    test:assertEquals(columns["first_name__c"]?.placeInOrder, 1);
+
+    string? nextBatchId = first?.nextBatchId;
+    if nextBatchId is () {
+        test:assertFail("Expected a next batch");
+    }
+    SqlQueryResponse last = check datacloud->getNextSqlQueryBatch(nextBatchId);
+    test:assertEquals(last.done, true);
+    test:assertEquals(last?.nextBatchId, ());
+    anydata[][] lastRows = last.data ?: [];
+    test:assertEquals(lastRows[0], ["100000003", "Kim", ()]);
+}
+
+@test:Config {
+    groups: ["mock_tests"]
+}
+isolated function testQuerySqlErrors() returns error? {
+    SqlQueryResponse|error badSql = datacloud->querySql({sql: "SELEC nonsense"});
+    test:assertTrue(badSql is http:ClientRequestError);
+    if badSql is http:ClientRequestError {
+        test:assertEquals(badSql.detail().statusCode, 400);
+    }
+    SqlQueryResponse|error unknownBatch = datacloud->getNextSqlQueryBatch("not-a-batch-id");
+    test:assertTrue(unknownBatch is http:ClientRequestError);
+    if unknownBatch is http:ClientRequestError {
+        test:assertEquals(unknownBatch.detail().statusCode, 404);
+    }
+}
+
+// ---------------------------------------------------------------------------------- JWT bearer grant
+
+@test:Config {
+    groups: ["mock_tests"]
+}
+function testJwtBearerGrant() returns error? {
+    int tokenRequests = getOauth2TokenRequestCount();
+    Client jwtClient = check new ({
+        auth: {clientId, username: MOCK_JWT_USERNAME, privateKey: {keyFile: "tests/resources/jwt-test-key.pem"}}
+    }, MOCK_TENANT_URL);
+    MetadataResponse metadata = check jwtClient->listProfileMetadata();
+    test:assertTrue(metadata.metadata is ObjectMetadata[]);
+    RunResult result = check jwtClient->runCalculatedInsight(INSIGHT_NAME);
+    test:assertEquals(result.success, true);
+    // One signed assertion serves both the token exchange and the Runs operations, at the org's token endpoint.
+    test:assertEquals(getOauth2TokenRequestCount(), tokenRequests + 1);
+}
+
+@test:Config {
+    groups: ["mock_tests"]
+}
+function testJwtBearerGrantRenewsRejectedToken() returns error? {
+    Client jwtClient = check new ({
+        auth: {clientId, username: MOCK_JWT_USERNAME, privateKey: {keyFile: "tests/resources/jwt-test-key.pem"}}
+    }, MOCK_TENANT_URL);
+    _ = check jwtClient->listIdentityResolutionRulesets();
+    int tokenRequests = getOauth2TokenRequestCount();
+    http:Client mockControl = check new (MOCK_TENANT_URL);
+    http:Response _ = check mockControl->post("/test/revoke-core", ());
+    http:Response _ = check mockControl->post("/test/revoke", ());
+
+    // The Runs call gets a 401, the client signs a new assertion, and both hosts work again.
+    IdentityResolutionRulesetList rulesets = check jwtClient->listIdentityResolutionRulesets();
+    test:assertTrue(rulesets.rulesets is IdentityResolutionRuleset[]);
+    MetadataResponse metadata = check jwtClient->listCalculatedInsightMetadata();
+    test:assertTrue(metadata.metadata is ObjectMetadata[]);
+    test:assertEquals(getOauth2TokenRequestCount(), tokenRequests + 1);
+}
+
+@test:Config {
+    groups: ["mock_tests"]
+}
+isolated function testJwtBearerGrantRejected() {
+    Client|error wrongKey = new ({
+        auth: {clientId, username: MOCK_JWT_USERNAME, privateKey: {keyFile: "tests/resources/jwt-other-key.pem"}}
+    }, MOCK_TENANT_URL);
+    if wrongKey !is error {
+        test:assertFail("Expected an assertion signed with an unknown key to be rejected");
+    }
+    test:assertTrue(wrongKey.message().startsWith("Failed to get a Salesforce access token with the JWT bearer grant"));
+
+    Client|error wrongUser = new ({
+        auth: {clientId, username: "someone.else@example.com", privateKey: {keyFile: "tests/resources/jwt-test-key.pem"}}
+    }, MOCK_TENANT_URL);
+    if wrongUser !is error {
+        test:assertFail("Expected an assertion for an unapproved user to be rejected");
+    }
+    test:assertTrue(wrongUser.message().includes("user hasn't approved this consumer"));
+}
+
+@test:Config {
+    groups: ["mock_tests"]
+}
+isolated function testResolveJwtBearerTokenUrl() {
+    var jwtGrant = resolveTokenUrl({clientId, username: MOCK_JWT_USERNAME, privateKey: {keyFile: "key.pem"}},
+        "https://acme.my.salesforce.com");
+    if jwtGrant is OAuth2JwtBearerGrantConfig {
+        test:assertEquals(jwtGrant?.tokenUrl, "https://acme.my.salesforce.com/services/oauth2/token");
+        test:assertEquals(jwtGrant?.audience, "https://login.salesforce.com");
+    } else {
+        test:assertFail("Expected a JWT bearer grant");
+    }
 }

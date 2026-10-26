@@ -49,6 +49,9 @@ dependencies = [
 	{org = "ballerina", name = "jballerina.java"},
 	{org = "ballerina", name = "time"}
 ]
+modules = [
+	{org = "ballerina", packageName = "crypto", moduleName = "crypto"}
+]
 
 [[package]]
 org = "ballerina"
@@ -133,6 +136,9 @@ dependencies = [
 	{org = "ballerina", name = "lang.string"},
 	{org = "ballerina", name = "log"},
 	{org = "ballerina", name = "time"}
+]
+modules = [
+	{org = "ballerina", packageName = "jwt", moduleName = "jwt"}
 ]
 
 [[package]]
@@ -354,8 +360,10 @@ name = "salesforce.datacloud"
 version = "1.0.0"
 dependencies = [
 	{org = "ballerina", name = "constraint"},
+	{org = "ballerina", name = "crypto"},
 	{org = "ballerina", name = "data.jsondata"},
 	{org = "ballerina", name = "http"},
+	{org = "ballerina", name = "jwt"},
 	{org = "ballerina", name = "lang.runtime"},
 	{org = "ballerina", name = "mime"},
 	{org = "ballerina", name = "os"},
