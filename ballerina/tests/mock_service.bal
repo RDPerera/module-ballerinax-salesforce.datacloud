@@ -274,7 +274,11 @@ service / on ep0 {
         if subjectToken is () || !isValidSubjectToken(subjectToken) {
             return <http:Ok>{body: {'error: "invalid_request", error_description: "invalid subject token"}};
         }
-        string? dataspace = form["dataspace"];
+        // The data space comes in the query string, not the form body.
+        if form.hasKey("dataspace") {
+            return <http:Ok>{body: {'error: "invalid_request", error_description: "dataspace belongs in the query"}};
+        }
+        string? dataspace = request.getQueryParamValue("dataspace");
         if dataspace == UNKNOWN_DATASPACE {
             return <http:Ok>{body: {'error: "invalid_dataspace", error_description: "data space not found"}};
         }

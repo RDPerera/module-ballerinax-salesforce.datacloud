@@ -537,13 +537,15 @@ public isolated client class Client {
         string body = string `grant_type=${check url:encode(CDP_GRANT_TYPE, "UTF-8")}`
             + string `&subject_token=${check url:encode(coreToken, "UTF-8")}`
             + string `&subject_token_type=${check url:encode(ACCESS_TOKEN_TYPE, "UTF-8")}`;
+        // Like Salesforce's own Data Cloud clients, the data space goes in the query string.
+        string path = DATA_CLOUD_TOKEN_PATH;
         string? dataspace = self.dataspace;
         if dataspace is string {
-            body += string `&dataspace=${check url:encode(dataspace, "UTF-8")}`;
+            path += string `?dataspace=${check url:encode(dataspace, "UTF-8")}`;
         }
         http:Request request = new;
         request.setTextPayload(body, "application/x-www-form-urlencoded");
-        return self.tokenClient->post(DATA_CLOUD_TOKEN_PATH, request);
+        return self.tokenClient->post(path, request);
     }
 
     // Returns the core-org client and the core token it carries, rebuilding the client when the token changed
