@@ -9,6 +9,16 @@ The `ballerinax/salesforce.datacloud` connector offers APIs to connect and inter
 
 Data Cloud serves these APIs from two hosts with two different tokens: the `Runs` operations go to your Salesforce org with its access token, and every other operation goes to the Data Cloud tenant endpoint with a Data Cloud token. The connector takes only your Salesforce org credentials and handles the rest: it exchanges the org's access token for a Data Cloud token, discovers the tenant endpoint, and exchanges again before the token expires.
 
+## Key features
+
+- Stream records into Data Cloud, delete them by primary key, and validate them against the object's schema before ingesting
+- Load large data sets with bulk ingestion jobs: create a job, upload CSV files, close or abort it, and track it to completion
+- Look up unified profiles and their related records, and read profile and calculated insight metadata
+- Query calculated insights and read an insight's values for a single profile
+- Run ANSI SQL queries over Data Cloud objects and page through the results
+- Start identity resolution and calculated insight runs on demand
+- Authenticate with your Salesforce org credentials only: the connector obtains and renews the Data Cloud token itself
+
 ## Setup guide
 
 To use the Data Cloud connector, you need a Salesforce org with Data Cloud, and an External Client App that the connector can authenticate with.
