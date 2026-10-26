@@ -1593,7 +1593,7 @@
           },
           "sourceName": {
             "type": "string",
-            "description": "API name of the Ingestion API connector"
+            "description": "Name of the Ingestion API connector"
           },
           "operation": {
             "allOf": [
@@ -1696,7 +1696,7 @@
         "properties": {
           "sourceName": {
             "type": "string",
-            "description": "API name of the Ingestion API connector"
+            "description": "Name of the Ingestion API connector as shown in Data Cloud setup"
           },
           "operation": {
             "allOf": [
@@ -1982,7 +1982,7 @@
       "SourceName": {
         "name": "sourceName",
         "in": "path",
-        "description": "API name of the Ingestion API connector (source) in Data Cloud setup",
+        "description": "Name of the Ingestion API connector as shown in Data Cloud setup, e.g. `CustomerOrders`",
         "required": true,
         "style": "simple",
         "explode": false,
@@ -2134,7 +2134,7 @@
       "SearchKey": {
         "name": "searchKey",
         "in": "query",
-        "description": "Field to match `id` against instead of the primary key, e.g. `Email__c`",
+        "description": "Field to match `recordId` against instead of the primary key, e.g. `ssot__Email__c`",
         "required": false,
         "style": "form",
         "explode": true,

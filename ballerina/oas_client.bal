@@ -38,7 +38,7 @@ isolated client class GeneratedClient {
 
     # Upsert records via streaming ingestion
     #
-    # + sourceName - API name of the Ingestion API connector (source) in Data Cloud setup
+    # + sourceName - Name of the Ingestion API connector as shown in Data Cloud setup, e.g. `CustomerOrders`
     # + objectName - Object name from the connector's schema
     # + headers - Headers to be sent with the request 
     # + return - Records queued for asynchronous processing 
@@ -52,7 +52,7 @@ isolated client class GeneratedClient {
 
     # Delete records by primary key via streaming ingestion
     #
-    # + sourceName - API name of the Ingestion API connector (source) in Data Cloud setup
+    # + sourceName - Name of the Ingestion API connector as shown in Data Cloud setup, e.g. `CustomerOrders`
     # + objectName - Object name from the connector's schema
     # + headers - Headers to be sent with the request 
     # + return - Records queued for asynchronous processing 
@@ -66,7 +66,7 @@ isolated client class GeneratedClient {
 
     # Validate records against the object schema without ingesting them
     #
-    # + sourceName - API name of the Ingestion API connector (source) in Data Cloud setup
+    # + sourceName - Name of the Ingestion API connector as shown in Data Cloud setup, e.g. `CustomerOrders`
     # + objectName - Object name from the connector's schema
     # + headers - Headers to be sent with the request 
     # + return - All records are valid. Nothing is stored 

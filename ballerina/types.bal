@@ -34,7 +34,7 @@ public type GetProfileChildRecordsQueries record {
     string orderBy?;
     # Comma-separated equality expressions in square brackets, joined with AND, e.g. `[FirstName__c=Alex,LastName__c=Perera]`. On child and insight lookups they apply to the parent object only
     string filters?;
-    # Field to match `id` against instead of the primary key, e.g. `Email__c`
+    # Field to match `recordId` against instead of the primary key, e.g. `ssot__Email__c`
     string searchKey?;
     # Fields to return (max 50). Without it, only the first 10 fields (alphabetically) come back
     string[] fields?;
@@ -115,7 +115,7 @@ public type QueryCalculatedInsightQueries record {
 
 # A bulk ingestion job to create
 public type CreateBulkJobRequest record {
-    # API name of the Ingestion API connector
+    # Name of the Ingestion API connector as shown in Data Cloud setup
     string sourceName;
     # Whether the job upserts or deletes records
     BulkJobOperation operation;
@@ -149,7 +149,7 @@ public type BulkJob record {
     # Object the job loads, from the connector's schema
     @jsondata:Name {value: "object"}
     string objectName?;
-    # API name of the Ingestion API connector
+    # Name of the Ingestion API connector
     string sourceName?;
     # Operation the job performs
     BulkJobOperation operation?;
@@ -322,7 +322,7 @@ public type GetProfileQueries record {
     string orderBy?;
     # Comma-separated equality expressions in square brackets, joined with AND, e.g. `[FirstName__c=Alex,LastName__c=Perera]`. On child and insight lookups they apply to the parent object only
     string filters?;
-    # Field to match `id` against instead of the primary key, e.g. `Email__c`
+    # Field to match `recordId` against instead of the primary key, e.g. `ssot__Email__c`
     string searchKey?;
     # Fields to return (max 50). Without it, only the first 10 fields (alphabetically) come back
     string[] fields?;
@@ -445,7 +445,7 @@ public type GetProfileCalculatedInsightQueries record {
     string orderBy?;
     # Comma-separated equality expressions in square brackets, joined with AND, e.g. `[FirstName__c=Alex,LastName__c=Perera]`. On child and insight lookups they apply to the parent object only
     string filters?;
-    # Field to match `id` against instead of the primary key, e.g. `Email__c`
+    # Field to match `recordId` against instead of the primary key, e.g. `ssot__Email__c`
     string searchKey?;
     # Dimensions to return. Defaults to all
     string[] dimensions?;

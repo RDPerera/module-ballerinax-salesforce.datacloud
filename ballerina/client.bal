@@ -154,7 +154,7 @@ public isolated client class Client {
 
     # Upsert records via streaming ingestion
     #
-    # + sourceName - API name of the Ingestion API connector (source) in Data Cloud setup
+    # + sourceName - Name of the Ingestion API connector as shown in Data Cloud setup, e.g. `CustomerOrders`
     # + objectName - Object name from the connector's schema
     # + payload - The records to upsert. Every field defined in the object's schema must be present in each record
     # + headers - Headers to be sent with the request
@@ -172,7 +172,7 @@ public isolated client class Client {
 
     # Delete records by primary key via streaming ingestion
     #
-    # + sourceName - API name of the Ingestion API connector (source) in Data Cloud setup
+    # + sourceName - Name of the Ingestion API connector as shown in Data Cloud setup, e.g. `CustomerOrders`
     # + objectName - Object name from the connector's schema
     # + payload - The primary keys of the records to delete (max 200)
     # + headers - Headers to be sent with the request
@@ -190,7 +190,7 @@ public isolated client class Client {
 
     # Validate records against the object schema without ingesting them
     #
-    # + sourceName - API name of the Ingestion API connector (source) in Data Cloud setup
+    # + sourceName - Name of the Ingestion API connector as shown in Data Cloud setup, e.g. `CustomerOrders`
     # + objectName - Object name from the connector's schema
     # + payload - The records to validate
     # + headers - Headers to be sent with the request
