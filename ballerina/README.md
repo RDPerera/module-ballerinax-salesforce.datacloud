@@ -159,35 +159,6 @@ public function main() returns error? {
 }
 ```
 
-#### Find a profile by email
-
-```ballerina
-public function main() returns error? {
-    // Email addresses live on the Contact Point Email object; `ssot__PartyId__c` is the individual's ID.
-    datacloud:QueryResponse emails = check datacloudClient->queryProfiles("ssot__ContactPointEmail__dlm",
-        filters = "[ssot__EmailAddress__c=alex@example.com]", fields = ["ssot__PartyId__c"]);
-    foreach record {} row in emails.data ?: [] {
-        datacloud:QueryResponse profile = check datacloudClient->getProfile("ssot__Individual__dlm",
-            row["ssot__PartyId__c"].toString());
-        io:println(profile.data);
-    }
-}
-```
-
-#### Run a SQL query
-
-```ballerina
-public function main() returns error? {
-    datacloud:SqlQueryResponse result = check datacloudClient->querySql({
-        sql: "SELECT ssot__Id__c, ssot__FirstName__c FROM ssot__Individual__dlm LIMIT 10"
-    });
-    foreach anydata[] row in result.data ?: [] {
-        io:println(row);
-    }
-    // When `done` is false, get the remaining rows with `getNextSqlQueryBatch(result.nextBatchId)`.
-}
-```
-
 ### Step 4: Run the Ballerina application
 
 ```bash
