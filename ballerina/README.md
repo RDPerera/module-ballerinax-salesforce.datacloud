@@ -5,7 +5,7 @@
 
 [Salesforce Data 360 (Data Cloud)](https://www.salesforce.com/data/) is Salesforce's customer data platform. It ingests data from any source, unifies it into customer profiles through identity resolution, and computes calculated insights on those profiles.
 
-The Salesforce Data 360 (Data Cloud) connector offers APIs to connect and interact with the [Data 360 APIs](https://developer.salesforce.com/docs/data/data-cloud-ref/guide/c360a-api-get-started.htm), enabling operations to stream and bulk-load records with the Ingestion API, read unified profiles with the Profile API, query calculated insights, run SQL queries with the Query API, and trigger identity resolution and calculated insight runs.
+The WSO2 Salesforce Data 360 (Data Cloud) Connector offers APIs to connect and interact with the [Data 360 APIs](https://developer.salesforce.com/docs/data/data-cloud-ref/guide/c360a-api-get-started.htm), enabling operations to stream and bulk-load records with the Ingestion API, read unified profiles with the Profile API, query calculated insights, run SQL queries with the Query API, and trigger identity resolution and calculated insight runs.
 
 Data 360 serves these APIs from two hosts with two different tokens: the `Runs` operations go to your Salesforce org with its access token, and every other operation goes to the Data 360 tenant endpoint with a Data 360 token. The connector takes only your Salesforce org credentials and handles the rest: it exchanges the org's access token for a Data 360 token, discovers the tenant endpoint, and exchanges again before the token expires.
 
@@ -21,7 +21,7 @@ Data 360 serves these APIs from two hosts with two different tokens: the `Runs` 
 
 ## Setup guide
 
-To use the Data 360 connector, you need a Salesforce org with Data 360, and an External Client App that the connector can authenticate with.
+To use the WSO2 Salesforce Data 360 (Data Cloud) Connector, you need a Salesforce org with Data 360, and an External Client App that the connector can authenticate with.
 
 ### Step 1: Turn on Data 360
 
@@ -101,7 +101,7 @@ Skip this step if you use the client credentials grant.
 
 ## Quickstart
 
-To use the `salesforce.datacloud` connector in your Ballerina application, update the `.bal` file as follows:
+To use the WSO2 Salesforce Data 360 (Data Cloud) Connector in your integration, update the `.bal` file as follows:
 
 ### Step 1: Import the module
 
@@ -165,7 +165,7 @@ public function main() returns error? {
 }
 ```
 
-### Step 4: Run the Ballerina application
+### Step 4: Run the integration
 
 ```bash
 bal run
@@ -173,7 +173,7 @@ bal run
 
 ## Examples
 
-The `Salesforce Data 360 (Data Cloud)` connector provides practical examples illustrating usage in various scenarios. Explore these [examples](https://github.com/ballerina-platform/module-ballerinax-salesforce.datacloud/tree/main/examples/), covering the following use cases:
+The WSO2 Salesforce Data 360 (Data Cloud) Connector provides practical examples illustrating usage in various scenarios. Explore these [examples](https://github.com/ballerina-platform/module-ballerinax-salesforce.datacloud/tree/main/examples/), covering the following use cases:
 
 1. [Bulk customer load](https://github.com/ballerina-platform/module-ballerinax-salesforce.datacloud/tree/main/examples/bulk-customer-load) — Create a bulk upsert job, upload a CSV file to it, close it, poll it until processing finishes, and delete the finished job.
 2. [Customer profile insights](https://github.com/ballerina-platform/module-ballerinax-salesforce.datacloud/tree/main/examples/customer-profile-insights) — Validate and stream a customer record, start an identity resolution run, and find the customer by email to read their profile and calculated insight values.

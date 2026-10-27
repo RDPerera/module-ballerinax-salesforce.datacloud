@@ -1,0 +1,13 @@
+# ballerina:13 and ballerina:14 are false positives. They match identifier names containing words such as
+# "token" or "auth", not secret values. Flagged code is:
+#  - constants naming endpoints, grant types and settings (DEFAULT_TOKEN_URL, DATA_CLOUD_TOKEN_PATH,
+#    ACCESS_TOKEN_TYPE, AUTH_HEADER_PREFIX = "Bearer ", TOKEN_EXPIRY_SKEW = 60),
+#  - public record fields with a URL default (tokenUrl = "https://login.salesforce.com/services/oauth2/token"),
+#    some of them generated, that are part of the public API,
+#  - internal state holding tokens obtained at runtime (dataCloudToken, coreClientToken, tokenResponse), and
+#    `auth: config.auth` forwarding of caller-supplied configuration.
+# No credential is embedded in the source; credentials always come from the caller's configuration.
+# TODO: replace these rule exclusions with targeted scan suppressions (with a reason) once `bal scan`
+# supports them (planned for v0.13.0).
+[rule]
+exclude = ["ballerina:13", "ballerina:14"]

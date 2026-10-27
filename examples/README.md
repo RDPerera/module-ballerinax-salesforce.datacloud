@@ -1,6 +1,6 @@
 # Examples
 
-The `ballerinax/salesforce.datacloud` connector provides practical examples illustrating usage in various scenarios.
+The WSO2 Salesforce Data 360 (Data Cloud) Connector provides practical examples illustrating usage in various scenarios.
 
 | Example | Description |
 |---------|-------------|
@@ -22,6 +22,8 @@ The `ballerinax/salesforce.datacloud` connector provides practical examples illu
 
     ```toml
     orgUrl = "https://<your-domain>.my.salesforce.com"
+
+    [auth]
     clientId = "<consumer-key>"
     clientSecret = "<consumer-secret>"
     ```

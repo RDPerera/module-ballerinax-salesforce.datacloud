@@ -44,6 +44,8 @@ isolated string[] issuedCoreTokens = [];
 isolated int exchangeCount = 0;
 isolated int oauth2TokenRequestCount = 0;
 isolated int runsRequestCount = 0;
+// When true, the OAuth 2.0 token endpoint refuses every request.
+isolated boolean oauth2Unavailable = false;
 isolated string[] validDataCloudTokens = [];
 isolated string? lastDataspace = ();
 
@@ -221,6 +223,13 @@ service / on ep0 {
         lock {
             oauth2TokenRequestCount += 1;
         }
+        boolean unavailable;
+        lock {
+            unavailable = oauth2Unavailable;
+        }
+        if unavailable {
+            return <http:BadRequest>{body: {'error: "temporarily_unavailable", error_description: "try again later"}};
+        }
         map<string> form = check parseForm(check request.getTextPayload());
         string? grantType = form["grant_type"];
         if grantType == "urn:ietf:params:oauth:grant-type:jwt-bearer" {
@@ -320,6 +329,13 @@ service / on ep0 {
     }
 
     // Test-only: invalidates every core token the token endpoint issued so far, as if the sessions had expired.
+    // Test-only: makes the OAuth 2.0 token endpoint refuse (`true`) or accept (`false`) token requests.
+    resource function post test/oauth2\-unavailable(@http:Payload boolean unavailable) {
+        lock {
+            oauth2Unavailable = unavailable;
+        }
+    }
+
     resource function post test/revoke\-core() {
         lock {
             issuedCoreTokens = [];

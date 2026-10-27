@@ -23,15 +23,15 @@ import ballerina/lang.runtime;
 import ballerinax/salesforce.datacloud;
 
 configurable string orgUrl = ?;
-configurable string clientId = ?;
-configurable string clientSecret = ?;
+// The consumer key and secret of the External Client App, as an `[auth]` table in Config.toml.
+configurable datacloud:OAuth2ClientCredentialsGrantConfig auth = ?;
 configurable string sourceName = "CustomerOrders";
 configurable string objectName = "customers";
 configurable decimal pollIntervalSeconds = 30;
 configurable int maxPolls = 40;
 
 public function main() returns error? {
-    datacloud:Client datacloudClient = check new ({auth: {clientId, clientSecret}}, orgUrl);
+    datacloud:Client datacloudClient = check new ({auth}, orgUrl);
 
     // Step 1: Create an upsert job for the object
     datacloud:BulkJob job = check datacloudClient->createBulkJob({

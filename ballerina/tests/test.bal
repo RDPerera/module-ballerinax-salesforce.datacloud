@@ -810,3 +810,48 @@ isolated function testResolveJwtBearerTokenUrl() {
         test:assertFail("Expected a JWT bearer grant");
     }
 }
+
+@test:Config {
+    groups: ["mock_tests"]
+}
+function testRunCalculatedInsightRetriesWithRenewedToken() returns error? {
+    Client renewingClient = check new ({auth: {clientId, clientSecret, refreshToken}}, MOCK_TENANT_URL);
+    _ = check renewingClient->listIdentityResolutionRulesets();
+    int tokenRequests = getOauth2TokenRequestCount();
+    http:Client mockControl = check new (MOCK_TENANT_URL);
+    http:Response _ = check mockControl->post("/test/revoke-core", ());
+
+    RunResult result = check renewingClient->runCalculatedInsight(INSIGHT_NAME);
+    test:assertEquals(result.success, true);
+    test:assertEquals(getOauth2TokenRequestCount(), tokenRequests + 1);
+}
+
+@test:Config {
+    groups: ["mock_tests"]
+}
+function testCoreTokenRenewalFails() returns error? {
+    Client renewingClient = check new ({auth: {clientId, clientSecret, refreshToken}}, MOCK_TENANT_URL);
+    _ = check renewingClient->listIdentityResolutionRulesets();
+    http:Client mockControl = check new (MOCK_TENANT_URL);
+    http:Response _ = check mockControl->post("/test/revoke-core", ());
+    http:Response _ = check mockControl->post("/test/oauth2-unavailable", true);
+    RunResult|error result = renewingClient->runIdentityResolutionRuleset("1irXX0000000001AAA");
+    http:Response _ = check mockControl->post("/test/oauth2-unavailable", false);
+
+    if result !is error {
+        test:assertFail("Expected an error when the org refuses to issue a new token");
+    }
+    test:assertEquals(result.message(), "Failed to fetch a new Salesforce access token from the configured OAuth2 grant.");
+}
+
+@test:Config {
+    groups: ["mock_tests"]
+}
+isolated function testConnectionSettingsKeepProxy() {
+    ConnectionSettings settings = toConnectionSettings({
+        auth: {token: MOCK_CORE_TOKEN},
+        proxy: {host: "proxy.example.com", port: 3128}
+    });
+    test:assertEquals(settings?.proxy?.host, "proxy.example.com");
+    test:assertEquals(settings?.proxy?.port, 3128);
+}
