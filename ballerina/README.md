@@ -1,6 +1,3 @@
-[![GitHub Last Commit](https://img.shields.io/github/last-commit/ballerina-platform/module-ballerinax-salesforce.datacloud.svg)](https://github.com/ballerina-platform/module-ballerinax-salesforce.datacloud/commits/main)
-[![GitHub Issues](https://img.shields.io/github/issues/ballerina-platform/ballerina-library/module/salesforce.datacloud.svg?label=Open%20Issues)](https://github.com/ballerina-platform/ballerina-library/labels/module%2Fsalesforce.datacloud)
-
 ## Overview
 
 [Salesforce Data 360 (Data Cloud)](https://www.salesforce.com/data/) is Salesforce's customer data platform. It ingests data from any source, unifies it into customer profiles through identity resolution, and computes calculated insights on those profiles.
