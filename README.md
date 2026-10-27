@@ -12,8 +12,6 @@
 
 The WSO2 Salesforce Data 360 (Data Cloud) Connector offers APIs to connect and interact with the [Data 360 APIs](https://developer.salesforce.com/docs/data/data-cloud-ref/guide/c360a-api-get-started.htm), enabling operations to stream and bulk-load records with the Ingestion API, read unified profiles with the Profile API, query calculated insights, run SQL queries with the Query API, and trigger identity resolution and calculated insight runs.
 
-Data 360 serves these APIs from two hosts with two different tokens: the `Runs` operations go to your Salesforce org with its access token, and every other operation goes to the Data 360 tenant endpoint with a Data 360 token. The connector takes only your Salesforce org credentials and handles the rest: it exchanges the org's access token for a Data 360 token, discovers the tenant endpoint, and exchanges again before the token expires.
-
 ### Key features
 
 - Stream records into Data 360, delete them by primary key, and validate them against the object's schema before ingesting
@@ -27,6 +25,8 @@ Data 360 serves these APIs from two hosts with two different tokens: the `Runs` 
 ## Setup guide
 
 To use the WSO2 Salesforce Data 360 (Data Cloud) Connector, you need a Salesforce org with Data 360, and an External Client App that the connector can authenticate with.
+
+Data 360 serves its APIs from two hosts with two different tokens: the `Runs` operations go to your Salesforce org with its access token, and every other operation goes to the Data 360 tenant endpoint with a Data 360 token. The connector takes only your Salesforce org credentials and handles the rest: it exchanges the org's access token for a Data 360 token, discovers the tenant endpoint, and exchanges again before the token expires.
 
 ### Step 1: Turn on Data 360
 
